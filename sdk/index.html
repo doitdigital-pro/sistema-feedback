@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sitio de Cliente Demo</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; margin: 0; padding: 0; color: #333; }
+    header { background: #1e293b; color: white; padding: 2rem; text-align: center; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+    button.demo { background: #0ea5e9; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    button.demo:hover { background: #0284c7; }
+  </style>
+
+  <!-- Simulamos la instalación que haría el cliente en su web -->
+  <script>
+    // Este token corresponde al "Sitio Demo" que creamos en el backend (seed.js)
+    window.IMGC_FEEDBACK_TOKEN = 'c4588d7f-5086-4ae9-b201-8419ee4bcadd';
+  </script>
+  <!-- En producción esto apuntaría a https://tu-dominio.com/sdk/imgc-feedback.min.js -->
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Mi Empresa Increíble</h1>
+    <p>Este es un sitio web de prueba para verificar que el SDK de IMGC Feedback funcione correctamente.</p>
+  </header>
+
+  <div class="container">
+    <h2>Nuestros Servicios</h2>
+    <div class="card">
+      <h3>Diseño Web</h3>
+      <p>Creación de sitios web a medida. Haz clic en el botón de feedback flotante y déjame un comentario sobre esta caja.</p>
+      <button class="demo">Ver más</button>
+    </div>
+
+    <div class="card">
+      <h3>Marketing Digital</h3>
+      <p>Campañas de SEO y SEM. Todo esto debe ser capturado correctamente por html2canvas.</p>
+      <button class="demo">Ver más</button>
+    </div>
+
+    <img src="https://via.placeholder.com/800x300" alt="Placeholder image" style="width: 100%; border-radius: 8px; margin-top: 2rem;">
+  </div>
+</body>
+</html>

@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instalador de IMGC Feedback</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0816;
+      --card-bg: rgba(20, 16, 38, 0.6);
+      --primary: #8b5cf6;
+      --primary-glow: rgba(139, 92, 246, 0.4);
+      --secondary: #10b981;
+      --danger: #ef4444;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(139, 92, 246, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      background-image: 
+        radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 90% 80%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 580px;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    /* Steps Indicator */
+    .steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      position: relative;
+    }
+
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 1;
+    }
+
+    .step-progress {
+      position: absolute;
+      top: 15px;
+      left: 0;
+      width: 0%;
+      height: 2px;
+      background: var(--primary);
+      z-index: 1;
+      transition: width 0.4s ease;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+      flex: 1;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #141126;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .step.active .step-circle {
+      border-color: var(--primary);
+      color: #fff;
+      background: var(--primary);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .step.completed .step-circle {
+      border-color: var(--secondary);
+      color: #fff;
+      background: var(--secondary);
+    }
+
+    .step-label {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.3s ease;
+    }
+
+    .step.active .step-label {
+      color: #fff;
+    }
+
+    /* Form Fields */
+    .form-step {
+      display: none;
+    }
+
+    .form-step.active {
+      display: block;
+      animation: slideIn 0.4s ease-out;
+    }
+
+    .step-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #fff;
+    }
+
+    .form-group-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+      background: rgba(15, 12, 30, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+      background: rgba(15, 12, 30, 0.95);
+    }
+
+    /* Message / Alert */
+    .alert {
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .alert.danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      display: block;
+    }
+
+    .alert.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #a7f3d0;
+      display: block;
+    }
+
+    /* Actions buttons */
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+      gap: 1rem;
+    }
+
+    .btn {
+      padding: 0.8rem 1.8rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      color: #fff;
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: #7c3aed;
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-primary:disabled {
+      background: rgba(139, 92, 246, 0.4);
+      border-color: transparent;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    /* Requirements Check Items */
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background: rgba(15, 12, 30, 0.6);
+      border: 1px solid var(--border);
+      transition: all 0.4s ease;
+    }
+
+    .check-item.pending {
+      opacity: 0.5;
+    }
+
+    .check-item.pass {
+      border-color: rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.06);
+      opacity: 1;
+    }
+
+    .check-item.fail {
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.06);
+      opacity: 1;
+    }
+
+    .check-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+
+    .check-item.pending .check-icon {
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+
+    .check-item.pass .check-icon {
+      background: rgba(16, 185, 129, 0.15);
+      border: 2px solid var(--secondary);
+      color: var(--secondary);
+    }
+
+    .check-item.fail .check-icon {
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .check-label {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .check-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .check-item.fail .check-detail {
+      color: #fca5a5;
+    }
+
+    .check-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(139, 92, 246, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Terminal Logger Screen (Step 4) */
+    .terminal {
+      background: #05030a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #10b981;
+      height: 180px;
+      overflow-y: auto;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    .terminal-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      line-height: 1.3;
+    }
+
+    .terminal-line.error {
+      color: var(--danger);
+    }
+
+    .terminal-line.info {
+      color: #3b82f6;
+    }
+
+    /* Progress bar */
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transition: width 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(15px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="logo-container">
+      <h1 class="logo-title">IMGC Feedback</h1>
+      <p class="logo-subtitle">Instalador de Plataforma de Revisión Visual</p>
+    </div>
+
+    <div class="card">
+      <!-- Pasos -->
+      <div class="steps">
+        <div class="step-progress" id="stepProgress"></div>
+        <div class="step active" id="stepIndicator0">
+          <div class="step-circle">✓</div>
+          <span class="step-label">Requisitos</span>
+        </div>
+        <div class="step" id="stepIndicator1">
+          <div class="step-circle">1</div>
+          <span class="step-label">Base de Datos</span>
+        </div>
+        <div class="step" id="stepIndicator2">
+          <div class="step-circle">2</div>
+          <span class="step-label">Administrador</span>
+        </div>
+        <div class="step" id="stepIndicator3">
+          <div class="step-circle">3</div>
+          <span class="step-label">Instalación</span>
+        </div>
+      </div>
+
+      <div id="alertBox" class="alert"></div>
+
+      <!-- Paso 0: Verificación de Requisitos -->
+      <div class="form-step active" id="formStep0">
+        <h2 class="step-title">Verificando Requisitos del Sistema</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">Comprobando que tu servidor cumple con los requisitos mínimos para instalar IMGC Feedback.</p>
+
+        <div class="check-list" id="checkList">
+          <div class="check-item pending" id="check-node_version">
+            <div class="check-icon"><div class="check-spinner"></div></div>
+            <div>
+              <div class="check-label">Node.js (v18+)</div>
+              <div class="check-detail">Verificando versión...</div>
+            </div>
+          </div>
+          <div class="check-item pending" id="check-env_write">
+            <div class="check-icon"><div class="check-spinner"></div></div>
+            <div>
+              <div class="check-label">Permisos de escritura (.env)</div>
+              <div class="check-detail">Verificando permisos...</div>
+            </div>
+          </div>
+          <div class="check-item pending" id="check-uploads_write">
+            <div class="check-icon"><div class="check-spinner"></div></div>
+            <div>
+              <div class="check-label">Permisos de escritura (uploads/)</div>
+              <div class="check-detail">Verificando permisos...</div>
+            </div>
+          </div>
+          <div class="check-item pending" id="check-npx">
+            <div class="check-icon"><div class="check-spinner"></div></div>
+            <div>
+              <div class="check-label">NPX disponible</div>
+              <div class="check-detail">Verificando disponibilidad...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <div></div>
+          <button type="button" class="btn btn-primary" id="btnNext0" disabled onclick="goToStep(1)">
+            Verificando...
+          </button>
+        </div>
+      </div>
+
+      <!-- Paso 1: Configuración DB -->
+      <div class="form-step" id="formStep1">
+        <h2 class="step-title">Configurar Base de Datos (PostgreSQL)</h2>
+        
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="dbHost">Servidor (Host)</label>
+            <input type="text" id="dbHost" value="localhost" placeholder="ej: localhost">
+          </div>
+          <div class="form-group">
+            <label for="dbPort">Puerto</label>
+            <input type="text" id="dbPort" value="5432" placeholder="ej: 5432">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="dbUser">Usuario</label>
+          <input type="text" id="dbUser" placeholder="ej: postgres">
+        </div>
+
+        <div class="form-group">
+          <label for="dbPass">Contraseña</label>
+          <input type="password" id="dbPass" placeholder="Contraseña de la base de datos">
+        </div>
+
+        <div class="form-group">
+          <label for="dbName">Nombre de Base de Datos</label>
+          <input type="text" id="dbName" value="imgc_feedback" placeholder="ej: imgc_feedback">
+        </div>
+
+        <div class="actions">
+          <div></div> <!-- Spacer -->
+          <button type="button" class="btn btn-primary" id="btnNext1" onclick="validateStep1()">
+            Probar Conexión & Siguiente →
+          </button>
+        </div>
+      </div>
+
+      <!-- Paso 2: Cuenta del Administrador -->
+      <div class="form-step" id="formStep2">
+        <h2 class="step-title">Crear Cuenta de Administrador</h2>
+        
+        <div class="form-group">
+          <label for="adminName">Nombre Completo</label>
+          <input type="text" id="adminName" placeholder="ej: Administrador Principal">
+        </div>
+
+        <div class="form-group">
+          <label for="adminEmail">Correo Electrónico</label>
+          <input type="email" id="adminEmail" placeholder="ej: admin@imgc.com">
+        </div>
+
+        <div class="form-group">
+          <label for="adminPass">Contraseña</label>
+          <input type="password" id="adminPass" placeholder="Crea una contraseña segura">
+        </div>
+
+        <div class="form-group">
+          <label for="geminiKey">Gemini API Key (Opcional)</label>
+          <input type="password" id="geminiKey" placeholder="Clave para autocategorización por IA">
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" onclick="goToStep(1)">
+            ← Atrás
+          </button>
+          <button type="button" class="btn btn-primary" id="btnNext2" onclick="validateStep2()">
+            Iniciar Instalación 🚀
+          </button>
+        </div>
+      </div>
+
+      <!-- Paso 3: Progreso / Logs -->
+      <div class="form-step" id="formStep3">
+        <h2 class="step-title">Instalando el Sistema...</h2>
+        
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="terminal" id="terminalLog">
+          <div class="terminal-line"><span>$</span> <span>Iniciando instalación de IMGC Feedback...</span></div>
+        </div>
+
+        <div class="actions" id="finalActions" style="display: none;">
+          <div></div> <!-- Spacer -->
+          <button type="button" class="btn btn-primary" onclick="goToDashboard()">
+            Ir al Dashboard →
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 0;
+    const dbData = {};
+    const adminData = {};
+    const TOTAL_STEPS = 4; // 0=Requirements, 1=DB, 2=Admin, 3=Install
+
+    function updateStepIndicator() {
+      for (let i = 0; i < TOTAL_STEPS; i++) {
+        const ind = document.getElementById(`stepIndicator${i}`);
+        if (!ind) continue;
+        if (i < currentStep) {
+          ind.className = 'step completed';
+        } else if (i === currentStep) {
+          ind.className = 'step active';
+        } else {
+          ind.className = 'step';
+        }
+      }
+      const progress = document.getElementById('stepProgress');
+      progress.style.width = `${(currentStep / (TOTAL_STEPS - 1)) * 100}%`;
+    }
+
+    function goToStep(step) {
+      document.getElementById(`formStep${currentStep}`).classList.remove('active');
+      currentStep = step;
+      document.getElementById(`formStep${currentStep}`).classList.add('active');
+      updateStepIndicator();
+      hideAlert();
+    }
+
+    function showAlert(message, type = 'danger') {
+      const box = document.getElementById('alertBox');
+      box.textContent = message;
+      box.className = `alert ${type}`;
+    }
+
+    function hideAlert() {
+      document.getElementById('alertBox').className = 'alert';
+    }
+
+    // ─── Step 0: Requirements Check (auto-runs on page load) ───
+    async function runRequirementsCheck() {
+      const btn = document.getElementById('btnNext0');
+      const checkIds = ['node_version', 'env_write', 'uploads_write', 'npx'];
+
+      try {
+        const response = await fetch('/api/install/check-requirements');
+        const data = await response.json();
+
+        // Animate each check result sequentially with a short delay
+        for (let i = 0; i < data.checks.length; i++) {
+          const check = data.checks[i];
+          await new Promise(r => setTimeout(r, 400));
+
+          const el = document.getElementById(`check-${check.id}`);
+          if (!el) continue;
+
+          el.className = `check-item ${check.ok ? 'pass' : 'fail'}`;
+          el.querySelector('.check-icon').innerHTML = check.ok ? '✔' : '✖';
+          el.querySelector('.check-label').textContent = check.label;
+          el.querySelector('.check-detail').textContent = check.detail;
+        }
+
+        if (data.allPassed) {
+          btn.disabled = false;
+          btn.textContent = 'Todo listo — Continuar →';
+        } else {
+          btn.disabled = true;
+          btn.textContent = 'Requisitos no cumplidos';
+          showAlert('Algunos requisitos no se cumplen. Corrígelos en tu servidor y recarga esta página.');
+        }
+      } catch (err) {
+        // Network error — mark all as failed
+        checkIds.forEach(id => {
+          const el = document.getElementById(`check-${id}`);
+          if (!el) return;
+          el.className = 'check-item fail';
+          el.querySelector('.check-icon').innerHTML = '✖';
+          el.querySelector('.check-detail').textContent = 'No se pudo verificar.';
+        });
+        btn.disabled = true;
+        btn.textContent = 'Error de conexión';
+        showAlert('No se pudo conectar con el servidor para verificar requisitos.');
+      }
+    }
+
+    // ─── Step 1: Database ───
+    async function validateStep1() {
+      const host = document.getElementById('dbHost').value.trim();
+      const port = document.getElementById('dbPort').value.trim();
+      const user = document.getElementById('dbUser').value.trim();
+      const pass = document.getElementById('dbPass').value;
+      const name = document.getElementById('dbName').value.trim();
+
+      if (!host || !port || !user || !name) {
+        showAlert('Todos los campos excepto la contraseña son obligatorios.');
+        return;
+      }
+
+      const btn = document.getElementById('btnNext1');
+      btn.disabled = true;
+      btn.textContent = 'Probando conexión...';
+      hideAlert();
+
+      try {
+        const response = await fetch('/api/install/test-db', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, port, user, pass, name })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          dbData.host = host;
+          dbData.port = port;
+          dbData.user = user;
+          dbData.pass = pass;
+          dbData.name = name;
+          goToStep(2);
+        } else {
+          showAlert(`Error de conexión a la base de datos: ${data.error || 'Verifica los datos.'}`);
+        }
+      } catch (err) {
+        showAlert('Error de red al intentar conectar con el servidor.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Probar Conexión & Siguiente →';
+      }
+    }
+
+    // ─── Step 2: Admin ───
+    function validateStep2() {
+      const name = document.getElementById('adminName').value.trim();
+      const email = document.getElementById('adminEmail').value.trim();
+      const pass = document.getElementById('adminPass').value;
+      const geminiKey = document.getElementById('geminiKey').value.trim();
+
+      if (!name || !email || !pass) {
+        showAlert('Todos los campos de la cuenta administrador son obligatorios.');
+        return;
+      }
+
+      if (pass.length < 6) {
+        showAlert('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+
+      adminData.name = name;
+      adminData.email = email;
+      adminData.pass = pass;
+      adminData.geminiKey = geminiKey;
+
+      goToStep(3);
+      startInstallation();
+    }
+
+    // ─── Step 3: Installation ───
+    function addLogLine(text, type = '') {
+      const term = document.getElementById('terminalLog');
+      const line = document.createElement('div');
+      line.className = `terminal-line ${type}`;
+      
+      const prompt = document.createElement('span');
+      prompt.textContent = type === 'error' ? '✖' : type === 'info' ? 'ℹ' : '✔';
+      if (type === '') prompt.textContent = '❯';
+      
+      const content = document.createElement('span');
+      content.textContent = text;
+      
+      line.appendChild(prompt);
+      line.appendChild(content);
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function setProgressBarWidth(width) {
+      document.getElementById('progressBar').style.width = `${width}%`;
+    }
+
+    async function startInstallation() {
+      addLogLine('Conectando con el servidor de instalación...');
+      setProgressBarWidth(10);
+
+      try {
+        const response = await fetch('/api/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            db: dbData,
+            admin: adminData
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const log = JSON.parse(line);
+              if (log.type === 'status') {
+                addLogLine(log.message, log.error ? 'error' : log.info ? 'info' : '');
+                if (log.progress) setProgressBarWidth(log.progress);
+                
+                if (log.error) {
+                  showAlert(`La instalación falló: ${log.message}`);
+                  return;
+                }
+              }
+            } catch (e) {
+              addLogLine(line);
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          try {
+            const log = JSON.parse(buffer);
+            if (log.type === 'status') {
+              addLogLine(log.message, log.error ? 'error' : '');
+              if (log.progress) setProgressBarWidth(log.progress);
+            }
+          } catch (e) {
+            addLogLine(buffer);
+          }
+        }
+
+        setProgressBarWidth(100);
+        addLogLine('¡Instalación completada con éxito!', 'info');
+        addLogLine('El servidor se está reiniciando para aplicar la configuración...', 'info');
+        addLogLine('En 3 segundos podrás ingresar al dashboard.', 'info');
+        
+        document.getElementById('finalActions').style.display = 'flex';
+      } catch (err) {
+        addLogLine(`Error de comunicación: ${err.message}`, 'error');
+        showAlert(`Error al comunicar con la API de instalación.`);
+      }
+    }
+
+    function goToDashboard() {
+      window.location.href = '/';
+    }
+
+    // ─── Auto-run requirements check on page load ───
+    document.addEventListener('DOMContentLoaded', () => {
+      runRequirementsCheck();
+    });
+  </script>
+</body>
+</html>
