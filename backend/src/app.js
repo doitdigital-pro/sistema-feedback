@@ -301,17 +301,19 @@ app.use((req, res) => {
 // ==========================================
 // INICIO DEL SERVIDOR
 // ==========================================
-const PORT = process.env.PORT || 3001;
-
-server.listen(PORT, () => {
-  logger.info('🚀 IMGC Feedback Backend iniciado', {
-    api: `http://localhost:${PORT}/api`,
-    health: `http://localhost:${PORT}/api/health`,
-    env: process.env.NODE_ENV,
-    version: 'v0.2.0',
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    logger.info('🚀 IMGC Feedback Backend iniciado', {
+      api: `http://localhost:${PORT}/api`,
+      health: `http://localhost:${PORT}/api/health`,
+      env: process.env.NODE_ENV,
+      version: 'v0.2.0',
+    });
   });
-});
 
-// Iniciar expirador de demos
-const { startDemoExpirator } = require('./cron/demoExpirator');
-startDemoExpirator();
+  // Iniciar expirador de demos
+  const { startDemoExpirator } = require('./cron/demoExpirator');
+  startDemoExpirator();
+}
+
+module.exports = app;
