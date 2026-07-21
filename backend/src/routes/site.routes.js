@@ -82,7 +82,8 @@ router.get('/:id/snippet', async (req, res, next) => {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null);
+    const frontendUrl = origin || process.env.FRONTEND_URL || 'http://localhost:5173';
     const reviewUrl = `${frontendUrl}/review/${site.sdkToken}`;
 
     // También devolvemos el snippet SDK por compatibilidad
