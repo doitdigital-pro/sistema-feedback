@@ -256,21 +256,108 @@ async function sendDiscordNotification({ project, site, comment, ticket }) {
 }
 
 /**
- * Dispara webhooks de Discord y Slack simultáneamente
+ * Envía un correo visual al miembro del equipo cuando se le asigna un ticket
  */
-async function sendFeedbackWebhooks({ project, site, comment, ticket }) {
-  // Ejecutar en paralelo sin bloquear el hilo principal de la petición de Express
-  Promise.allSettled([
-    sendSlackNotification({ project, site, comment, ticket }),
-    sendDiscordNotification({ project, site, comment, ticket })
-  ]).then(results => {
-    // Solo para traza interna de desarrollo
+async function sendTicketAssignmentEmail({ assignee, ticket, project, site }) {
+  if (!assignee || !assignee.email) return;
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const ticketUrl = `${frontendUrl}/tickets/${ticket.id}`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #4f46e5; margin: 0; font-size: 22px;">IMGC Feedback</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Nuevo ticket asignado a tu cuenta</p>
+      </div>
+
+      <div style="background: white; border-radius: 8px; padding: 20px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #1e293b; font-size: 16px;">Hola ${assignee.name},</h3>
+        <p style="color: #475569; font-size: 14px; line-height: 1.5;">
+          Se te ha asignado el ticket <strong>"${ticket.title}"</strong> en el proyecto <strong>${project.name}</strong> (${site.name}).
+        </p>
+
+        <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #334155;">
+          <div><strong>Prioridad:</strong> <span style="color: ${ticket.priority === 'URGENT' ? '#7c3aed' : ticket.priority === 'HIGH' ? '#ef4444' : '#f59e0b'}; font-weight: bold;">${ticket.priority || 'MEDIUM'}</span></div>
+          <div style="margin-top: 4px;"><strong>Categoría:</strong> ${ticket.category || 'OTHER'}</div>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${ticketUrl}" style="background: #4f46e5; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">
+            Ver Ticket en el Dashboard →
+          </a>
+        </div>
+      </div>
+
+      <p style="text-align: center; color: #94a3b8; font-size: 12px; margin: 0;">
+        IMGC Feedback System · Notificación automática
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: assignee.email,
+    subject: `📋 Te han asignado el ticket: "${ticket.title}" - ${project.name}`,
+    html,
+    text: `Hola ${assignee.name}, se te ha asignado el ticket "${ticket.title}" en el proyecto ${project.name}. Ver ticket: ${ticketUrl}`,
   });
+}
+
+/**
+ * Envía un correo a los administradores cuando llega un nuevo feedback
+ */
+async function sendNewFeedbackAdminEmail({ adminEmails, ticket, comment, project, site }) {
+  if (!adminEmails || adminEmails.length === 0) return;
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const ticketUrl = `${frontendUrl}/tickets/${ticket.id}`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #4f46e5; margin: 0; font-size: 22px;">IMGC Feedback</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Nuevo comentario visual recibido</p>
+      </div>
+
+      <div style="background: white; border-radius: 8px; padding: 20px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #1e293b; font-size: 16px;">Nuevo Feedback en ${project.name}</h3>
+        <p style="color: #475569; font-size: 14px;"><strong>Sitio:</strong> ${site.name}</p>
+        <p style="color: #475569; font-size: 14px;"><strong>Página:</strong> <a href="${comment.pageUrl}" style="color: #4f46e5;">${comment.pageTitle || comment.pageUrl}</a></p>
+        
+        <div style="background: #f8fafc; border-left: 4px solid #4f46e5; padding: 12px; margin: 16px 0; font-style: italic; color: #334155; font-size: 14px;">
+          "${comment.content}"
+        </div>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${ticketUrl}" style="background: #4f46e5; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">
+            Revisar en Dashboard →
+          </a>
+        </div>
+      </div>
+
+      <p style="text-align: center; color: #94a3b8; font-size: 12px; margin: 0;">
+        IMGC Feedback System · Notificación de sistema
+      </p>
+    </div>
+  `;
+
+  return Promise.all(
+    adminEmails.map(email =>
+      sendEmail({
+        to: email,
+        subject: `📩 Nuevo Feedback Recibido en ${project.name}: "${comment.content.substring(0, 30)}..."`,
+        html,
+        text: `Nuevo feedback recibido en ${project.name}. Comentario: "${comment.content}". Ver: ${ticketUrl}`,
+      })
+    )
+  );
 }
 
 module.exports = {
   sendEmail,
   sendSlackNotification,
   sendDiscordNotification,
-  sendFeedbackWebhooks
+  sendFeedbackWebhooks,
+  sendTicketAssignmentEmail,
+  sendNewFeedbackAdminEmail
 };

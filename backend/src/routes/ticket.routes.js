@@ -188,12 +188,20 @@ router.put('/:id', async (req, res, next) => {
       });
     }
 
-    // Activity Log
+    // Activity Log & Email Notifications
     if (status !== undefined) {
       logActivity({ action: ACTIONS.TICKET_STATUS_CHANGED, entity: 'ticket', entityId: ticket.id, details: { status }, userId: req.user.id, ipAddress: req.ip });
     }
     if (assigneeId !== undefined) {
       logActivity({ action: ACTIONS.TICKET_ASSIGNED, entity: 'ticket', entityId: ticket.id, details: { assigneeId }, userId: req.user.id, ipAddress: req.ip });
+      if (ticket.assignee) {
+        notificationService.sendTicketAssignmentEmail({
+          assignee: ticket.assignee,
+          ticket,
+          project: ticket.comment?.site?.project || { name: 'Proyecto' },
+          site: ticket.comment?.site || { name: 'Sitio' },
+        });
+      }
     }
     if (priority !== undefined) {
       logActivity({ action: ACTIONS.TICKET_PRIORITY_CHANGED, entity: 'ticket', entityId: ticket.id, details: { priority }, userId: req.user.id, ipAddress: req.ip });

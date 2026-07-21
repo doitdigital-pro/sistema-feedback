@@ -6,6 +6,7 @@ const fs = require('fs');
 const aiService = require('../services/ai.service');
 const { uploadToSupabase } = require('../utils/storage');
 const xss = require('xss');
+const notificationService = require('../services/notification.service');
 const { logActivity, ACTIONS } = require('../services/activity.service');
 
 const router = express.Router();
@@ -185,6 +186,20 @@ router.post('/', upload.array('files', 5), async (req, res, next) => {
 
     // Activity Log
     logActivity({ action: ACTIONS.FEEDBACK_RECEIVED, entity: 'comment', entityId: comment.id, details: { siteId: site.id, projectId: site.project.id }, ipAddress: req.ip });
+
+    // Notificar por correo a los administradores (en segundo plano)
+    prisma.user.findMany({ where: { role: 'ADMIN', isActive: true }, select: { email: true } })
+      .then(admins => {
+        const adminEmails = admins.map(a => a.email);
+        notificationService.sendNewFeedbackAdminEmail({
+          adminEmails,
+          ticket,
+          comment,
+          project: site.project,
+          site: { id: site.id, name: site.name },
+        });
+      })
+      .catch(e => console.error('Error enviando notificaciones por correo a admins:', e));
 
     res.status(201).json({
       success: true,
