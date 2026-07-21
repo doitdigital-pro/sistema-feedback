@@ -6,6 +6,7 @@ const { authenticator } = require('otplib');
 const qrcode = require('qrcode');
 const prisma = require('../prisma');
 const { sendEmail } = require('../services/notification.service');
+const { logActivity, ACTIONS } = require('../services/activity.service');
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.post('/login', async (req, res, next) => {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
+      logActivity({ action: ACTIONS.LOGIN_FAILED, entity: 'user', details: { email }, ipAddress: req.ip });
       return res.status(401).json({ error: 'Credenciales inválidas.' });
     }
 
@@ -52,6 +54,7 @@ router.post('/login', async (req, res, next) => {
     );
 
     const { password: _, twoFactorSecret, ...userSafe } = user;
+    logActivity({ action: ACTIONS.LOGIN, entity: 'user', entityId: user.id, details: { email: user.email }, userId: user.id, ipAddress: req.ip });
     res.json({ token, user: userSafe });
   } catch (err) {
     next(err);

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LogOut, LayoutDashboard, MessageSquare, FolderGit2, Users, Settings, MonitorPlay } from 'lucide-react';
+import { LogOut, LayoutDashboard, MessageSquare, FolderGit2, Users, Settings, MonitorPlay, Activity } from 'lucide-react';
 import { useState } from 'react';
 
 const routeTitles = {
@@ -9,6 +9,7 @@ const routeTitles = {
   '/users': 'Usuarios',
   '/settings': 'Ajustes',
   '/admin/demos': 'Demos',
+  '/activity': 'Actividad',
 };
 
 export default function DashboardLayout() {
@@ -69,6 +70,9 @@ export default function DashboardLayout() {
               </Link>
               <Link to="/admin/demos" className={`nav-item ${location.pathname.startsWith('/admin/demos') ? 'active' : ''}`}>
                 <MonitorPlay size={18} /> Demos
+              </Link>
+              <Link to="/activity" className={`nav-item ${location.pathname.startsWith('/activity') ? 'active' : ''}`}>
+                <Activity size={18} /> Actividad
               </Link>
             </>
           )}

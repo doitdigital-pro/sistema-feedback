@@ -3,6 +3,7 @@ const prisma = require('../prisma');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { injectAllowedProjects } = require('../middlewares/projectPermission.middleware');
 const notificationService = require('../services/notification.service');
+const { logActivity, ACTIONS } = require('../services/activity.service');
 
 const router = express.Router();
 router.use(authenticate);
@@ -185,6 +186,17 @@ router.put('/:id', async (req, res, next) => {
         resolvedAt: ticket.resolvedAt,
         notes: ticket.notes,
       });
+    }
+
+    // Activity Log
+    if (status !== undefined) {
+      logActivity({ action: ACTIONS.TICKET_STATUS_CHANGED, entity: 'ticket', entityId: ticket.id, details: { status }, userId: req.user.id, ipAddress: req.ip });
+    }
+    if (assigneeId !== undefined) {
+      logActivity({ action: ACTIONS.TICKET_ASSIGNED, entity: 'ticket', entityId: ticket.id, details: { assigneeId }, userId: req.user.id, ipAddress: req.ip });
+    }
+    if (priority !== undefined) {
+      logActivity({ action: ACTIONS.TICKET_PRIORITY_CHANGED, entity: 'ticket', entityId: ticket.id, details: { priority }, userId: req.user.id, ipAddress: req.ip });
     }
 
     const projectInfo = ticket.comment?.site?.project;

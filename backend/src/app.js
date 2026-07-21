@@ -5,6 +5,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const logger = require('./utils/logger');
 
 // Rutas
 const authRoutes = require('./routes/auth.routes');
@@ -19,16 +20,35 @@ const reviewRoutes = require('./routes/review.routes');
 const installRoutes = require('./routes/install.routes');
 const settingRoutes = require('./routes/setting.routes');
 const demoRoutes = require('./routes/demo.routes');
+const activityRoutes = require('./routes/activity.routes');
 
 const app = express();
 const server = http.createServer(app);
 
+// Trust proxy para nginx/reverse proxy en VPS
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // ==========================================
 // SOCKET.IO
 // ==========================================
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000'
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     methods: ['GET', 'POST'],
   },
 });
@@ -127,7 +147,7 @@ app.use('/api/', globalLimiter);
 // Límite más estricto para inicio de sesión y recuperación de contraseña (15 peticiones por 15 minutos)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: process.env.NODE_ENV === 'development' ? 100 : 15,
   message: { error: 'Demasiados intentos de autenticación. Por favor, inténtalo en 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -206,7 +226,13 @@ app.use('/test-site', express.static(path.join(__dirname, '../public_test')));
 // RUTAS
 // ==========================================
 const adminCors = cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true,
 });
 
@@ -224,12 +250,33 @@ app.use('/api/feedback', publicCors, feedbackRoutes); // SDK público
 app.use('/api/review', publicCors, reviewRoutes);  // Review Page (público, auth por token)
 app.use('/api/demos', publicCors, demoRoutes); // Demo requests
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Activity Log
+app.use('/api/activity', adminCors, activityRoutes);
+
+// Health check mejorado con estado de BD
+app.get('/api/health', async (req, res) => {
+  const prisma = require('./prisma');
+  let dbStatus = 'unknown';
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbStatus = 'connected';
+  } catch (e) {
+    dbStatus = 'disconnected';
+  }
+  
+  const uptime = process.uptime();
+  const memUsage = process.memoryUsage();
+  
   res.json({
-    status: 'ok',
-    version: '0.1.0',
+    status: dbStatus === 'connected' ? 'ok' : 'degraded',
+    version: '0.2.0',
     timestamp: new Date().toISOString(),
+    database: dbStatus,
+    uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+    memory: {
+      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+      heap: `${Math.round(memUsage.heapUsed / 1024 / 1024)}/${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+    },
   });
 });
 
@@ -237,7 +284,7 @@ app.get('/api/health', (req, res) => {
 // MANEJO DE ERRORES GLOBAL
 // ==========================================
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.message);
+  logger.error(err.message, { stack: err.stack, path: req.path, method: req.method });
   const status = err.status || 500;
   res.status(status).json({
     error: err.message || 'Error interno del servidor',
@@ -247,6 +294,7 @@ app.use((err, req, res, next) => {
 
 // 404
 app.use((req, res) => {
+  logger.warn(`Ruta no encontrada: ${req.method} ${req.path}`);
   res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
 });
 
@@ -256,11 +304,12 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
-  console.log(`\n🚀 IMGC Feedback Backend`);
-  console.log(`   API:      http://localhost:${PORT}/api`);
-  console.log(`   Health:   http://localhost:${PORT}/api/health`);
-  console.log(`   Entorno:  ${process.env.NODE_ENV}`);
-  console.log(`   Versión:  v0.1.0\n`);
+  logger.info('🚀 IMGC Feedback Backend iniciado', {
+    api: `http://localhost:${PORT}/api`,
+    health: `http://localhost:${PORT}/api/health`,
+    env: process.env.NODE_ENV,
+    version: 'v0.2.0',
+  });
 });
 
 // Iniciar expirador de demos

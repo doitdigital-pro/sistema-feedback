@@ -12,6 +12,7 @@ import Users from './pages/Users';
 import Settings from './pages/Settings';
 import ReviewPage from './pages/ReviewPage';
 import DemosAdmin from './pages/DemosAdmin';
+import ActivityLog from './pages/ActivityLog';
 import './index.css';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/demos" element={<DemosAdmin />} />
+          <Route path="/activity" element={<ActivityLog />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

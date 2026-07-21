@@ -6,6 +6,7 @@ const fs = require('fs');
 const aiService = require('../services/ai.service');
 const { uploadToSupabase } = require('../utils/storage');
 const xss = require('xss');
+const { logActivity, ACTIONS } = require('../services/activity.service');
 
 const router = express.Router();
 
@@ -181,6 +182,9 @@ router.post('/', upload.array('files', 5), async (req, res, next) => {
         project: site.project,
       });
     }
+
+    // Activity Log
+    logActivity({ action: ACTIONS.FEEDBACK_RECEIVED, entity: 'comment', entityId: comment.id, details: { siteId: site.id, projectId: site.project.id }, ipAddress: req.ip });
 
     res.status(201).json({
       success: true,
