@@ -16,6 +16,9 @@ export default function TicketDetail() {
   const [savingAssignee, setSavingAssignee] = useState(false);
   const [savingPriority, setSavingPriority] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [allTags, setAllTags] = useState([]);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6366f1');
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -42,8 +45,18 @@ export default function TicketDetail() {
       }
     };
 
+    const fetchTags = async () => {
+      try {
+        const res = await api.get('/tags');
+        setAllTags(res.data);
+      } catch (err) {
+        console.error('Error cargando tags', err);
+      }
+    };
+
     fetchTicket();
     fetchUsers();
+    fetchTags();
   }, [id]);
 
   const handleResolve = async () => {
@@ -102,6 +115,48 @@ export default function TicketDetail() {
       toast.error('Error al cambiar la categoría');
     } finally {
       setSavingCategory(false);
+    }
+  };
+
+  const handleAddTag = async (e) => {
+    e?.preventDefault();
+    if (!newTagName.trim()) return;
+    try {
+      const res = await api.post(`/tags/tickets/${id}`, {
+        name: newTagName.trim(),
+        color: newTagColor,
+      });
+
+      const updatedTags = [...(ticket.tags || [])];
+      if (!updatedTags.some(t => t.tagId === res.data.tagId)) {
+        updatedTags.push(res.data);
+      }
+      setTicket({ ...ticket, tags: updatedTags });
+
+      // Actualizar la lista global de tags si no existía
+      if (!allTags.some(t => t.id === res.data.tag.id)) {
+        setAllTags([...allTags, res.data.tag]);
+      }
+
+      setNewTagName('');
+      toast.success('Etiqueta agregada.');
+    } catch (err) {
+      console.error('Error agregando tag', err);
+      toast.error('Error al agregar la etiqueta');
+    }
+  };
+
+  const handleRemoveTag = async (tagId) => {
+    try {
+      await api.delete(`/tags/tickets/${id}/tags/${tagId}`);
+      setTicket({
+        ...ticket,
+        tags: (ticket.tags || []).filter(t => t.tagId !== tagId),
+      });
+      toast.success('Etiqueta removida.');
+    } catch (err) {
+      console.error('Error removiendo tag', err);
+      toast.error('Error al remover la etiqueta');
     }
   };
 
@@ -271,6 +326,75 @@ export default function TicketDetail() {
                   </select>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Tarjeta de Etiquetas / Tags */}
+          <div className="card mb-4">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3>Etiquetas (Tags)</h3>
+            </div>
+            <div className="card-body">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                {(ticket.tags || []).map(t => (
+                  <span
+                    key={t.tagId}
+                    style={{
+                      background: `${t.tag?.color || '#6366f1'}20`,
+                      color: t.tag?.color || '#6366f1',
+                      border: `1px solid ${t.tag?.color || '#6366f1'}50`,
+                      borderRadius: '12px',
+                      padding: '3px 10px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    🏷️ {t.tag?.name}
+                    <button
+                      onClick={() => handleRemoveTag(t.tagId)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: t.tag?.color || '#6366f1',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                      title="Quitar etiqueta"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                {(!ticket.tags || ticket.tags.length === 0) && (
+                  <span style={{ color: '#94a3b8', fontSize: '12px' }}>Sin etiquetas asignadas.</span>
+                )}
+              </div>
+
+              <form onSubmit={handleAddTag} style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="Nueva etiqueta..."
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  style={{ flex: 1, padding: '6px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                />
+                <input
+                  type="color"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  style={{ width: '32px', height: '32px', padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
+                  title="Color de etiqueta"
+                />
+                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '6px 12px' }}>
+                  +
+                </button>
+              </form>
             </div>
           </div>
 

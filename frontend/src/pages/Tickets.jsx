@@ -294,6 +294,15 @@ export default function Tickets() {
                   <td>{ticket.comment?.site?.project?.name || 'N/A'}</td>
                   <td>
                     <strong>{ticket.title}</strong>
+                    {ticket.tags && ticket.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {ticket.tags.map(t => (
+                          <span key={t.tagId} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: `${t.tag?.color || '#6366f1'}20`, color: t.tag?.color || '#6366f1', border: `1px solid ${t.tag?.color || '#6366f1'}40`, fontWeight: 600 }}>
+                            🏷️ {t.tag?.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <a href={ticket.comment?.pageUrl} target="_blank" rel="noreferrer" className="text-link">
@@ -356,6 +365,16 @@ export default function Tickets() {
                       <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '6px', color: '#1e293b' }}>
                         {ticket.title}
                       </h4>
+
+                      {ticket.tags && ticket.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          {ticket.tags.map(t => (
+                            <span key={t.tagId} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: `${t.tag?.color || '#6366f1'}20`, color: t.tag?.color || '#6366f1', border: `1px solid ${t.tag?.color || '#6366f1'}40`, fontWeight: 600 }}>
+                              🏷️ {t.tag?.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>
                         {ticket.comment?.site?.project?.name}

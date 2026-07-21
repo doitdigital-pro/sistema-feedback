@@ -57,6 +57,7 @@ router.get('/', async (req, res, next) => {
           },
         },
         assignee: { select: { id: true, name: true, avatar: true } },
+        tags: { include: { tag: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -94,6 +95,7 @@ router.get('/:id', async (req, res, next) => {
           },
         },
         assignee: { select: { id: true, name: true, avatar: true } },
+        tags: { include: { tag: true } },
         messages: {
           include: { author: { select: { id: true, name: true, avatar: true } } },
           orderBy: { createdAt: 'asc' },
