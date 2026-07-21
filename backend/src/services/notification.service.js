@@ -256,6 +256,16 @@ async function sendDiscordNotification({ project, site, comment, ticket }) {
 }
 
 /**
+ * Dispara webhooks de Discord y Slack simultáneamente
+ */
+async function sendFeedbackWebhooks({ project, site, comment, ticket }) {
+  Promise.allSettled([
+    sendSlackNotification({ project, site, comment, ticket }),
+    sendDiscordNotification({ project, site, comment, ticket })
+  ]);
+}
+
+/**
  * Envía un correo visual al miembro del equipo cuando se le asigna un ticket
  */
 async function sendTicketAssignmentEmail({ assignee, ticket, project, site }) {

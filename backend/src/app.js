@@ -303,6 +303,8 @@ app.use((req, res) => {
 // ==========================================
 // INICIO DEL SERVIDOR
 // ==========================================
+const PORT = process.env.PORT || 3001;
+
 if (!process.env.VERCEL) {
   server.listen(PORT, () => {
     logger.info('🚀 IMGC Feedback Backend iniciado', {

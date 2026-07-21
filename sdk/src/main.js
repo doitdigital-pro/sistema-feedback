@@ -12,16 +12,19 @@ let feedbackMode = false;
 let existingPins = [];
 let tempPin = null;
 
-// Initialize SDK ONLY if we are in an iframe (Review Page)
+// Initialize SDK
 function init() {
   if (!config.token) {
     console.error('[IMGC Feedback] No token provided.');
     return;
   }
 
-  // Si no está en un iframe, el SDK es invisible y no hace NADA.
+  injectStyles();
+
+  // Si no está en un iframe, activamos el Botón Flotante Público (Standalone Widget)
   if (!config.isIframe) {
-    console.log('[IMGC Feedback] SDK running in public mode (Invisible).');
+    console.log('[IMGC Feedback] SDK running in public widget mode.');
+    renderFloatingButton();
     return;
   }
 
@@ -29,9 +32,6 @@ function init() {
 
   // Escuchar mensajes desde el padre (Review Page)
   window.addEventListener('message', handlePostMessage);
-
-  // Inyectar estilos básicos para los pines dentro del iframe
-  injectStyles();
 
   // Iniciar polling para detectar navegación SPA de manera infalible
   startUrlPolling();
@@ -145,32 +145,181 @@ async function handleDocumentClick(e) {
       viewportHeight: window.innerHeight
     };
 
-    // Enviar data al padre (incluyendo datos de scroll)
-    window.parent.postMessage({
-      type: 'NEW_CLICK',
-      data: {
+    if (config.isIframe) {
+      // Enviar data al padre (Review Page)
+      window.parent.postMessage({
+        type: 'NEW_CLICK',
+        data: {
+          xPercent,
+          yPercent,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+          screenshotBase64,
+          browserInfo
+        }
+      }, config.parentOrigin);
+    } else {
+      // Modo Standalone: Mostrar modal de envío directo en la página
+      showStandaloneModal({
         xPercent,
         yPercent,
         scrollX: window.scrollX,
         scrollY: window.scrollY,
         screenshotBase64,
         browserInfo
-      }
-    }, config.parentOrigin);
+      });
+    }
 
   } catch (error) {
     console.error('[IMGC Feedback] Error taking screenshot:', error);
-    // Enviar igual pero sin captura
-    window.parent.postMessage({
-      type: 'NEW_CLICK',
-      data: {
-        xPercent,
-        yPercent,
-        screenshotBase64: null,
-        error: 'Failed to capture screen'
-      }
-    }, config.parentOrigin);
+    if (config.isIframe) {
+      window.parent.postMessage({
+        type: 'NEW_CLICK',
+        data: { xPercent, yPercent, scrollX: window.scrollX, scrollY: window.scrollY, browserInfo }
+      }, config.parentOrigin);
+    }
   }
+}
+
+function renderFloatingButton() {
+  if (document.getElementById('imgc-widget-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'imgc-widget-btn';
+  btn.innerHTML = '💬 Feedback';
+  btn.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 30px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+    cursor: pointer;
+    z-index: 2147483646;
+    transition: transform 0.2s, background 0.2s;
+  `;
+
+  btn.addEventListener('mouseenter', () => { btn.style.transform = 'scale(1.05)'; });
+  btn.addEventListener('mouseleave', () => { btn.style.transform = 'scale(1)'; });
+
+  btn.addEventListener('click', () => {
+    feedbackMode = !feedbackMode;
+    if (feedbackMode) {
+      btn.style.background = '#ef4444';
+      btn.innerHTML = '✖ Cancelar';
+      document.body.style.cursor = 'crosshair';
+      document.addEventListener('click', handleDocumentClick, true);
+    } else {
+      btn.style.background = '#4f46e5';
+      btn.innerHTML = '💬 Feedback';
+      document.body.style.cursor = 'default';
+      document.removeEventListener('click', handleDocumentClick, true);
+      removeTempPin();
+      removeStandaloneModal();
+    }
+  });
+
+  document.body.appendChild(btn);
+}
+
+function showStandaloneModal(data) {
+  removeStandaloneModal();
+
+  const modal = document.createElement('div');
+  modal.id = 'imgc-standalone-modal';
+  modal.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    width: 320px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    z-index: 2147483647;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+
+  modal.innerHTML = `
+    <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 15px;">Enviar Feedback</h4>
+    <p style="margin: 0 0 12px 0; color: #64748b; font-size: 12px;">Comentario sobre la zona marcada (+)</p>
+    <textarea id="imgc-comment-input" rows="3" placeholder="Escribe tu comentario aquí..." style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box; resize: vertical; margin-bottom: 12px;"></textarea>
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button id="imgc-cancel-btn" style="padding: 6px 12px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-size: 12px; color: #64748b;">Cancelar</button>
+      <button id="imgc-submit-btn" style="padding: 6px 14px; border: none; background: #4f46e5; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Enviar Feedback</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById('imgc-cancel-btn').addEventListener('click', () => {
+    removeTempPin();
+    removeStandaloneModal();
+  });
+
+  document.getElementById('imgc-submit-btn').addEventListener('click', async () => {
+    const input = document.getElementById('imgc-comment-input');
+    const content = input ? input.value.trim() : '';
+    if (!content) return alert('Escribe un comentario antes de enviar.');
+
+    const submitBtn = document.getElementById('imgc-submit-btn');
+    submitBtn.innerText = 'Enviando...';
+    submitBtn.disabled = true;
+
+    try {
+      const backendUrl = import.meta.env?.VITE_BACKEND_URL || 'http://localhost:3001';
+      const formData = new FormData();
+      formData.append('content', content);
+      formData.append('pageUrl', window.location.href);
+      formData.append('pageTitle', document.title);
+      formData.append('xPercent', data.xPercent);
+      formData.append('yPercent', data.yPercent);
+      formData.append('scrollX', data.scrollX);
+      formData.append('scrollY', data.scrollY);
+      formData.append('viewportWidth', data.browserInfo.viewportWidth);
+      formData.append('viewportHeight', data.browserInfo.viewportHeight);
+      formData.append('browserName', navigator.userAgent);
+      if (data.screenshotBase64) {
+        formData.append('screenshotBase64', data.screenshotBase64);
+      }
+
+      const res = await fetch(`${backendUrl}/api/feedback`, {
+        method: 'POST',
+        headers: {
+          'x-sdk-token': config.token,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Error al guardar el feedback.');
+
+      alert('¡Gracias! Tu feedback se ha enviado correctamente.');
+      removeTempPin();
+      removeStandaloneModal();
+
+      const widgetBtn = document.getElementById('imgc-widget-btn');
+      if (widgetBtn) {
+        widgetBtn.click(); // Salir del modo feedback
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al enviar feedback. Intenta de nuevo.');
+      submitBtn.innerText = 'Enviar Feedback';
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+function removeStandaloneModal() {
+  const existing = document.getElementById('imgc-standalone-modal');
+  if (existing) existing.remove();
 }
 
 let pinsContainer = null;
