@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const aiService = require('../services/ai.service');
 const { uploadToSupabase } = require('../utils/storage');
+const xss = require('xss');
 
 const router = express.Router();
 
@@ -93,17 +94,23 @@ router.post('/', upload.array('files', 5), async (req, res, next) => {
       }
     }
 
+    // Sanitizar inputs
+    const safeContent = xss(content);
+    const safePageTitle = pageTitle ? xss(pageTitle) : null;
+    const safeBrowserName = browserName ? xss(browserName) : null;
+    const safeOsName = osName ? xss(osName) : null;
+
     // Crear el comentario
     const comment = await prisma.comment.create({
       data: {
-        content,
+        content: safeContent,
         pageUrl,
-        pageTitle,
+        pageTitle: safePageTitle,
         xPercent: parseFloat(xPercent) || 0,
         yPercent: parseFloat(yPercent) || 0,
-        browserName,
+        browserName: safeBrowserName,
         browserVersion,
-        osName,
+        osName: safeOsName,
         osVersion,
         screenWidth: screenWidth ? parseInt(screenWidth) : null,
         screenHeight: screenHeight ? parseInt(screenHeight) : null,
@@ -145,12 +152,12 @@ router.post('/', upload.array('files', 5), async (req, res, next) => {
     }
 
     // Clasificar feedback visual con IA
-    const aiClassification = await aiService.classifyTicket(content);
+    const aiClassification = await aiService.classifyTicket(safeContent);
 
     // Crear ticket automáticamente
     const ticket = await prisma.ticket.create({
       data: {
-        title: content.substring(0, 80) + (content.length > 80 ? '...' : ''),
+        title: safeContent.substring(0, 80) + (safeContent.length > 80 ? '...' : ''),
         commentId: comment.id,
         category: aiClassification.category,
         priority: aiClassification.priority,

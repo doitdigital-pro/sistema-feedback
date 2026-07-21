@@ -64,7 +64,8 @@ io.use((socket, next) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key_12345');
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET no configurado');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.user = decoded;
     next();
   } catch (err) {
@@ -101,7 +102,15 @@ const rateLimit = require('express-rate-limit');
 
 // Cabeceras de seguridad HTTP
 app.use(helmet({
-  contentSecurityPolicy: false, // Desactivado para evitar romper los scripts inline de la página de test e instalador
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'", "https:", "wss:", "ws:"],
+    }
+  },
   crossOriginResourcePolicy: { policy: "cross-origin" } // Permite cargar recursos de uploads desde el frontend
 }));
 
