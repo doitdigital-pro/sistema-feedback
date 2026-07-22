@@ -177,19 +177,19 @@ let isSystemInstalled = false;
 
 async function checkInstallation() {
   if (isSystemInstalled) return true;
-  const fs = require('fs');
-  const envPath = path.join(__dirname, '../.env');
-  if (!fs.existsSync(envPath)) return false;
   if (!process.env.DATABASE_URL) return false;
 
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
-    await prisma.$disconnect();
-    isSystemInstalled = adminCount > 0;
+    const prisma = require('./prisma');
+    const userCount = await prisma.user.count({
+      where: {
+        role: { in: ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'] }
+      }
+    });
+    isSystemInstalled = userCount > 0;
     return isSystemInstalled;
   } catch (e) {
+    console.error('Error checking system installation:', e.message);
     return false;
   }
 }
