@@ -81,7 +81,7 @@ router.post('/', requireRole(adminRoles), async (req, res, next) => {
 // GET /api/projects/:id — Detalle del proyecto
 router.get('/:id', async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(req.params.id))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(req.params.id))) {
       return res.status(403).json({ error: 'No tienes acceso a este proyecto.' });
     }
 

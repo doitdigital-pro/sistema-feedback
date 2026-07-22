@@ -5,10 +5,12 @@ const { authenticate } = require('../middlewares/auth.middleware');
 
 router.use(authenticate);
 
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+
 router.get('/stats', async (req, res, next) => {
   try {
     const userProjectFilter = {};
-    if (req.user.role !== 'ADMIN') {
+    if (!adminRoles.includes(req.user.role)) {
       const permissions = await prisma.userProjectPermission.findMany({
         where: { userId: req.user.id, canView: true },
         select: { projectId: true },

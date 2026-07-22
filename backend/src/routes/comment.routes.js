@@ -8,13 +8,15 @@ const router = express.Router();
 router.use(authenticate);
 router.use(injectAllowedProjects);
 
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+
 // GET /api/comments — Todos los comentarios (con filtros)
 router.get('/', async (req, res, next) => {
   try {
     const { status, siteId, projectId } = req.query;
 
     // Verificar permisos si el usuario no es ADMIN
-    if (req.user.role !== 'ADMIN') {
+    if (!adminRoles.includes(req.user.role)) {
       if (projectId && !req.allowedProjectIds.includes(projectId)) {
         return res.status(403).json({ error: 'No tienes acceso a este proyecto.' });
       }
@@ -30,7 +32,7 @@ router.get('/', async (req, res, next) => {
       ...(status && { status }),
       ...(siteId && { siteId }),
       ...(projectId && { site: { projectId } }),
-      ...(req.user.role !== 'ADMIN' && {
+      ...(!adminRoles.includes(req.user.role) && {
         site: {
           projectId: { in: req.allowedProjectIds }
         }
@@ -65,7 +67,7 @@ router.get('/:id', async (req, res, next) => {
     });
     if (!comment) return res.status(404).json({ error: 'Comentario no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(comment.site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(comment.site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este comentario.' });
     }
 
@@ -92,7 +94,7 @@ router.put('/:id/status', requireRole(['ADMIN', 'MEMBER']), async (req, res, nex
 
     if (!existingComment) return res.status(404).json({ error: 'Comentario no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(existingComment.site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(existingComment.site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este comentario.' });
     }
 
@@ -117,7 +119,7 @@ router.delete('/:id', requireRole(['ADMIN', 'MEMBER']), async (req, res, next) =
 
     if (!existingComment) return res.status(404).json({ error: 'Comentario no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(existingComment.site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(existingComment.site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este comentario.' });
     }
 
