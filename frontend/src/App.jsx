@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import ReviewPage from './pages/ReviewPage';
 import DemosAdmin from './pages/DemosAdmin';
 import ActivityLog from './pages/ActivityLog';
+import SuperAdminPanel from './pages/SuperAdminPanel';
 import './index.css';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/demos" element={<DemosAdmin />} />
           <Route path="/activity" element={<ActivityLog />} />
+          <Route path="/admin/saas" element={<SuperAdminPanel />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

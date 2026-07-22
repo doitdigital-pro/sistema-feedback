@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LogOut, LayoutDashboard, MessageSquare, FolderGit2, Users, Settings, MonitorPlay, Activity } from 'lucide-react';
+import { LogOut, LayoutDashboard, MessageSquare, FolderGit2, Users, Settings, MonitorPlay, Activity, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 const routeTitles = {
@@ -10,7 +10,10 @@ const routeTitles = {
   '/settings': 'Ajustes',
   '/admin/demos': 'Demos',
   '/activity': 'Actividad',
+  '/admin/saas': 'Panel Super Admin',
 };
+
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -60,7 +63,7 @@ export default function DashboardLayout() {
           <Link to="/tickets" className={`nav-item ${location.pathname.startsWith('/tickets') ? 'active' : ''}`}>
             <MessageSquare size={18} /> Feedback
           </Link>
-          {user.role === 'ADMIN' && (
+          {adminRoles.includes(user.role) && (
             <>
               <Link to="/users" className={`nav-item ${location.pathname.startsWith('/users') ? 'active' : ''}`}>
                 <Users size={18} /> Usuarios
@@ -75,6 +78,11 @@ export default function DashboardLayout() {
                 <Activity size={18} /> Actividad
               </Link>
             </>
+          )}
+          {user.role === 'SUPER_ADMIN' && (
+            <Link to="/admin/saas" className={`nav-item ${location.pathname.startsWith('/admin/saas') ? 'active' : ''}`} style={{ borderTop: '1px solid #e2e8f0', marginTop: '8px', paddingTop: '12px', color: '#7c3aed' }}>
+              <Shield size={18} /> Admin SaaS
+            </Link>
           )}
         </nav>
 
