@@ -6,9 +6,11 @@ const { requireRole } = require('../middlewares/role.middleware');
 
 const router = express.Router();
 
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+
 // Todas las rutas de usuarios requieren estar autenticadas y ser ADMIN
 router.use(authenticate);
-router.use(requireRole(['ADMIN']));
+router.use(requireRole(adminRoles));
 
 const userSelect = {
   id: true,

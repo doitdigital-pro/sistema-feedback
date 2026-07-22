@@ -6,7 +6,8 @@ const prisma = require('../prisma');
  */
 async function injectAllowedProjects(req, res, next) {
   try {
-    if (req.user.role === 'ADMIN') {
+    const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+    if (adminRoles.includes(req.user.role)) {
       req.allowedProjectIds = null; // null = sin restricción
       return next();
     }
@@ -35,7 +36,8 @@ async function injectAllowedProjects(req, res, next) {
  */
 async function requireProjectAccess(req, res, next) {
   try {
-    if (req.user.role === 'ADMIN') return next();
+    const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+    if (adminRoles.includes(req.user.role)) return next();
 
     const projectId = req.projectId; // Debe ser inyectado por la ruta específica
     if (!projectId) return next();

@@ -54,14 +54,23 @@ router.get('/list', async (req, res, next) => {
 });
 
 // POST /api/projects — Crear proyecto
-router.post('/', requireRole(['ADMIN']), async (req, res, next) => {
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+
+router.post('/', requireRole(adminRoles), async (req, res, next) => {
   try {
     const { name, description, clientName, clientEmail, color } = req.body;
 
     if (!name) return res.status(400).json({ error: 'El nombre del proyecto es requerido.' });
 
     const project = await prisma.project.create({
-      data: { name, description, clientName, clientEmail, color },
+      data: {
+        name,
+        description,
+        clientName,
+        clientEmail,
+        color,
+        organizationId: req.user.organizationId || null
+      },
     });
     res.status(201).json(project);
   } catch (err) {
@@ -95,7 +104,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // PUT /api/projects/:id — Actualizar proyecto
-router.put('/:id', requireRole(['ADMIN']), async (req, res, next) => {
+router.put('/:id', requireRole(adminRoles), async (req, res, next) => {
   try {
     const { name, description, clientName, clientEmail, color, isActive } = req.body;
 
@@ -113,7 +122,7 @@ router.put('/:id', requireRole(['ADMIN']), async (req, res, next) => {
 // GET /api/projects/:id/report — Obtener toda la data consolidada del proyecto para reportes
 router.get('/:id/report', async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(req.params.id))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(req.params.id))) {
       return res.status(403).json({ error: 'No tienes acceso a este proyecto.' });
     }
 
@@ -153,7 +162,7 @@ router.get('/:id/report', async (req, res, next) => {
 });
 
 // DELETE /api/projects/:id — Eliminar proyecto
-router.delete('/:id', requireRole(['ADMIN']), async (req, res, next) => {
+router.delete('/:id', requireRole(adminRoles), async (req, res, next) => {
   try {
     await prisma.project.delete({ where: { id: req.params.id } });
     res.json({ message: 'Proyecto eliminado correctamente.' });

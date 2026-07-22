@@ -9,11 +9,13 @@ const router = express.Router();
 router.use(authenticate);
 router.use(injectAllowedProjects);
 
+const adminRoles = ['SUPER_ADMIN', 'ORG_OWNER', 'ORG_ADMIN', 'ADMIN'];
+
 // GET /api/sites — Todos los sitios
 router.get('/', async (req, res, next) => {
   try {
     const where = {};
-    if (req.user.role !== 'ADMIN') {
+    if (!adminRoles.includes(req.user.role)) {
       where.projectId = { in: req.allowedProjectIds };
     }
 
@@ -32,7 +34,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/sites — Crear sitio dentro de un proyecto
-router.post('/', requireRole(['ADMIN']), async (req, res, next) => {
+router.post('/', requireRole(adminRoles), async (req, res, next) => {
   try {
     const { name, url, projectId, mobileBreakpoint } = req.body;
 
@@ -62,7 +64,7 @@ router.get('/:id', async (req, res, next) => {
     });
     if (!site) return res.status(404).json({ error: 'Sitio no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
@@ -78,7 +80,7 @@ router.get('/:id/snippet', async (req, res, next) => {
     const site = await prisma.site.findUnique({ where: { id: req.params.id } });
     if (!site) return res.status(404).json({ error: 'Sitio no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
@@ -104,7 +106,7 @@ router.get('/:id/comments', async (req, res, next) => {
     const site = await prisma.site.findUnique({ where: { id: req.params.id } });
     if (!site) return res.status(404).json({ error: 'Sitio no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
@@ -128,7 +130,7 @@ router.get('/:id/comments', async (req, res, next) => {
 });
 
 // DELETE /api/sites/:id — Eliminar sitio
-router.delete('/:id', requireRole(['ADMIN']), async (req, res, next) => {
+router.delete('/:id', requireRole(adminRoles), async (req, res, next) => {
   try {
     await prisma.site.delete({ where: { id: req.params.id } });
     res.json({ message: 'Sitio eliminado correctamente.' });
@@ -147,7 +149,7 @@ router.post('/:id/share-email', async (req, res, next) => {
     });
     if (!site) return res.status(404).json({ error: 'Sitio no encontrado.' });
 
-    if (req.user.role !== 'ADMIN' && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
+    if (!adminRoles.includes(req.user.role) && (!req.allowedProjectIds || !req.allowedProjectIds.includes(site.projectId))) {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
