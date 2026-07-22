@@ -20,6 +20,7 @@ const userSelect = {
   isActive: true,
   createdAt: true,
   avatar: true,
+  organizationId: true,
 };
 
 const userWithPermissions = {
@@ -50,7 +51,7 @@ router.get('/', async (req, res, next) => {
 // POST /api/users - Crear usuario
 router.post('/', async (req, res, next) => {
   try {
-    const { name, email, password, role, projectIds } = req.body;
+    const { name, email, password, role, projectIds, organizationId } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos.' });
@@ -70,6 +71,7 @@ router.post('/', async (req, res, next) => {
         password: hashedPassword,
         role: role || 'MEMBER',
         isActive: true,
+        organizationId: organizationId || null,
         projectPermissions: projectIds && projectIds.length > 0 ? {
           create: projectIds.map(projectId => ({
             projectId,
@@ -90,13 +92,14 @@ router.post('/', async (req, res, next) => {
 // PUT /api/users/:id - Actualizar usuario
 router.put('/:id', async (req, res, next) => {
   try {
-    const { name, email, role, isActive, password, projectIds } = req.body;
+    const { name, email, role, isActive, password, projectIds, organizationId } = req.body;
 
     const dataToUpdate = {};
     if (name !== undefined) dataToUpdate.name = name;
     if (email !== undefined) dataToUpdate.email = email;
     if (role !== undefined) dataToUpdate.role = role;
     if (isActive !== undefined) dataToUpdate.isActive = isActive;
+    if (organizationId !== undefined) dataToUpdate.organizationId = organizationId || null;
     if (password) {
       dataToUpdate.password = await bcrypt.hash(password, 10);
     }
