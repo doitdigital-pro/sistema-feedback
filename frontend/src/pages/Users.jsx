@@ -228,9 +228,12 @@ export default function Users() {
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>Rol</label>
                   <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '14px' }}>
-                    <option value="MEMBER">Member (Trabajador)</option>
-                    <option value="VIEWER">Viewer (Solo Lectura)</option>
-                    <option value="ADMIN">Admin (Administrador)</option>
+                    <option value="MEMBER">Member (Desarrollador / Miembro)</option>
+                    <option value="CLIENT_VIEWER">Client Viewer (Cliente / Solo Lectura)</option>
+                    <option value="ORG_ADMIN">Org Admin (Administrador Organización)</option>
+                    <option value="ORG_OWNER">Org Owner (Dueño de Cuenta SaaS)</option>
+                    <option value="SUPER_ADMIN">Super Admin (Administrador SaaS)</option>
+                    <option value="ADMIN">Admin (Compatibilidad)</option>
                   </select>
                 </div>
                 <div>

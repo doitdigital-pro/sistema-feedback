@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { useToast } from '../components/Toast';
-import { Save, Mail, MessageSquare, Info, Eye, ShieldCheck, Key } from 'lucide-react';
+import { Save, Mail, MessageSquare, Info, Eye, ShieldCheck, Key, Building, Sparkles } from 'lucide-react';
 
 export default function Settings() {
   const toast = useToast();
@@ -18,8 +18,10 @@ export default function Settings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('email'); // 'email' | 'whatsapp' | 'smtp' | 'security'
+  const [activeTab, setActiveTab] = useState('organization'); // 'organization' | 'email' | 'whatsapp' | 'smtp' | 'security'
   const [showPassword, setShowPassword] = useState(false);
+  const [organization, setOrganization] = useState(null);
+  const [plans, setPlans] = useState([]);
 
   // 2FA State
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -49,6 +51,17 @@ export default function Settings() {
       setSettings(resSettings.data);
       setTwoFactorEnabled(resUser.data.twoFactorEnabled);
       setUserRole(resUser.data.role);
+
+      try {
+        const [resOrg, resPlans] = await Promise.all([
+          api.get('/organizations/my'),
+          api.get('/organizations/plans')
+        ]);
+        setOrganization(resOrg.data);
+        setPlans(resPlans.data);
+      } catch (err) {
+        // Ignorar si el usuario aún no tiene organización asignada
+      }
     } catch (err) {
       console.error('Error fetching settings or user data', err);
       toast.error('Error al cargar la configuración');
@@ -145,6 +158,26 @@ export default function Settings() {
             <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '10px', flexWrap: 'wrap', gap: '5px' }}>
               <button
                 type="button"
+                className={`tab-btn ${activeTab === 'organization' ? 'active' : ''}`}
+                onClick={() => setActiveTab('organization')}
+                style={{
+                  padding: '12px 20px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'organization' ? '2px solid #4f46e5' : '2px solid transparent',
+                  color: activeTab === 'organization' ? '#4f46e5' : '#64748b',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  outline: 'none'
+                }}
+              >
+                <Building size={16} style={{ color: '#6366f1' }} /> Organización / Plan SaaS
+              </button>
+              <button
+                type="button"
                 className={`tab-btn ${activeTab === 'email' ? 'active' : ''}`}
                 onClick={() => setActiveTab('email')}
                 style={{
@@ -224,6 +257,90 @@ export default function Settings() {
                 <ShieldCheck size={16} style={{ color: '#10b981' }} /> Seguridad (2FA)
               </button>
             </div>
+
+            {activeTab === 'organization' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Building size={20} style={{ color: '#4f46e5' }} /> {organization?.name || 'Mi Organización SaaS'}
+                    </h3>
+                    <span style={{ padding: '4px 12px', background: '#e0e7ff', color: '#4338ca', borderRadius: '20px', fontWeight: 'bold', fontSize: '12px' }}>
+                      Plan Actual: {organization?.plan?.name || 'FREE'}
+                    </span>
+                  </div>
+                  <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
+                    Identificador (Slug): <code>{organization?.slug || 'default-tenant'}</code>
+                  </p>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '16px', color: '#1e293b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={18} style={{ color: '#eab308' }} /> Planes de Suscripción Disponibles
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    {plans.map((p) => {
+                      const isCurrent = organization?.planId === p.id || (p.name === 'FREE' && !organization?.planId);
+                      return (
+                        <div key={p.id} style={{
+                          padding: '16px',
+                          borderRadius: '10px',
+                          border: isCurrent ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+                          background: isCurrent ? '#f5f3ff' : '#ffffff',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justify: 'space-between'
+                        }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h5 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>{p.name}</h5>
+                              {isCurrent && <span style={{ fontSize: '11px', background: '#4f46e5', color: '#fff', padding: '2px 8px', borderRadius: '10px' }}>Actual</span>}
+                            </div>
+                            <div style={{ fontSize: '20px', fontWeight: '800', color: '#4f46e5', margin: '8px 0' }}>
+                              ${p.priceMonthly} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}>/mes</span>
+                            </div>
+                            <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>{p.description}</p>
+                            <ul style={{ paddingLeft: '18px', fontSize: '12px', color: '#334155', margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <li>Hasta <strong>{p.maxProjects === 9999 ? 'Ilimitados' : p.maxProjects}</strong> proyectos</li>
+                              <li>Hasta <strong>{p.maxSites === 9999 ? 'Ilimitados' : p.maxSites}</strong> sitios web</li>
+                              <li>Hasta <strong>{p.maxMembers === 9999 ? 'Ilimitados' : p.maxMembers}</strong> miembros</li>
+                              <li>Clasificación IA: <strong>{p.aiEnabled ? '✅ Incluida' : '❌ No'}</strong></li>
+                            </ul>
+                          </div>
+                          {!isCurrent && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await api.put('/organizations/my/plan', { planId: p.id });
+                                  toast.success(`Plan cambiado a ${p.name} con éxito`);
+                                  fetchSettings();
+                                } catch (err) {
+                                  toast.error(err.response?.data?.error || 'Error al cambiar plan');
+                                }
+                              }}
+                              style={{
+                                marginTop: '16px',
+                                padding: '8px 12px',
+                                background: '#4f46e5',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '12px'
+                              }}
+                            >
+                              Seleccionar Plan
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {activeTab === 'security' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -22,6 +22,7 @@ const settingRoutes = require('./routes/setting.routes');
 const demoRoutes = require('./routes/demo.routes');
 const activityRoutes = require('./routes/activity.routes');
 const tagRoutes = require('./routes/tag.routes');
+const organizationRoutes = require('./routes/organization.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -248,6 +249,7 @@ app.use('/api/users', adminCors, userRoutes);
 app.use('/api/dashboard', adminCors, dashboardRoutes);
 app.use('/api/settings', adminCors, settingRoutes);
 app.use('/api/tags', adminCors, tagRoutes);
+app.use('/api/organizations', adminCors, organizationRoutes);
 app.use('/api/feedback', publicCors, feedbackRoutes); // SDK público
 app.use('/api/review', publicCors, reviewRoutes);  // Review Page (público, auth por token)
 app.use('/api/demos', publicCors, demoRoutes); // Demo requests
