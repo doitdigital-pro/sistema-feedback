@@ -6,36 +6,91 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// PLANES SAAS
+// ==========================================
+model Plan {
+  id                  String   @id @default(uuid())
+  name                String   @unique // "FREE", "PRO", "ENTERPRISE"
+  description         String?
+  maxProjects         Int      @default(1)
+  maxSites            Int      @default(2)
+  maxFeedbackPerMonth Int      @default(100)
+  maxMembers          Int      @default(2)
+  aiEnabled           Boolean  @default(false)
+  priceMonthly        Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organizations Organization[]
+
+  @@map("plans")
+}
+
+// ==========================================
+// ORGANIZACIONES / TENANTS SAAS
+// ==========================================
+model Organization {
+  id                   String             @id @default(uuid())
+  name                 String
+  slug                 String             @unique
+  logo                 String?
+  planId               String
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   SubscriptionStatus @default(ACTIVE)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  users    User[]
+  projects Project[]
+
+  @@map("organizations")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
 }
 
 // ==========================================
 // USUARIOS DEL PANEL
 // ==========================================
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(MEMBER)
-  avatar    String?
-  isActive  Boolean  @default(true)
-  twoFactorEnabled Boolean @default(false)
+  id               String        @id @default(uuid())
+  email            String        @unique
+  password         String
+  name             String
+  role             UserRole      @default(MEMBER)
+  avatar           String?
+  isActive         Boolean       @default(true)
+  twoFactorEnabled Boolean       @default(false)
   twoFactorSecret  String?
-  resetToken String?          // Token para restablecer contraseña
-  resetExpires DateTime?      // Fecha de expiración del token
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  resetToken       String?       // Token para restablecer contraseña
+  resetExpires     DateTime?     // Fecha de expiración del token
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   // Relaciones
-  comments       Comment[]
-  assignedTickets Ticket[] @relation("AssignedTickets")
-  ticketMessages TicketMessage[]
+  comments           Comment[]
+  assignedTickets    Ticket[]                 @relation("AssignedTickets")
+  ticketMessages     TicketMessage[]
   projectPermissions UserProjectPermission[] // Proyectos a los que tiene acceso
-  demoRequests   DemoRequest[]
-  activityLogs   ActivityLog[]
+  demoRequests       DemoRequest[]
+  activityLogs       ActivityLog[]
 
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -43,21 +98,25 @@ model User {
 // PROYECTOS (agrupan sitios web)
 // ==========================================
 model Project {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   clientName  String?
   clientEmail String?
-  color       String  @default("#6366f1") // Color para el UI
-  isActive    Boolean @default(true)
+  color       String   @default("#6366f1") // Color para el UI
+  isActive    Boolean  @default(true)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  sites Site[]
+  sites           Site[]
   userPermissions UserProjectPermission[]
 
+  @@index([organizationId])
   @@map("projects")
 }
 
@@ -65,16 +124,16 @@ model Project {
 // SITIOS WEB (pertenecen a un proyecto)
 // ==========================================
 model Site {
-  id       String @id @default(uuid())
-  name     String
-  url      String
-  sdkToken String @unique @default(uuid()) // Token único para autenticar el SDK
-  mobileBreakpoint Int? @default(768)      // Breakpoint en px para clasificar vista PC/Celular
+  id               String  @id @default(uuid())
+  name             String
+  url              String
+  sdkToken         String  @unique @default(uuid()) // Token único para autenticar el SDK
+  mobileBreakpoint Int?    @default(768)      // Breakpoint en px para clasificar vista PC/Celular
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  isActive  Boolean @default(true)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,23 +150,23 @@ model Site {
 model Comment {
   id        String  @id @default(uuid())
   content   String  @db.Text
-  guestName String?           // Nombre del visitante (Review Page)
+  guestName String? // Nombre del visitante (Review Page)
 
   // Posición del clic (porcentajes relativos al viewport)
   xPercent Float
   yPercent Float
 
   // Contexto de la página
-  pageUrl String
+  pageUrl   String
   pageTitle String?
 
   // Metadata del navegador (capturada por el SDK)
-  browserName  String?
+  browserName    String?
   browserVersion String?
-  osName       String?
-  osVersion    String?
-  screenWidth  Int?
-  screenHeight Int?
+  osName         String?
+  osVersion      String?
+  screenWidth    Int?
+  screenHeight   Int?
   viewportWidth  Int?
   viewportHeight Int?
   scrollX        Int?
@@ -126,7 +185,7 @@ model Comment {
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
-  ticket Ticket?
+  ticket      Ticket?
   attachments Attachment[]
 
   createdAt DateTime @default(now())
@@ -142,14 +201,14 @@ model Comment {
 // ADJUNTOS (archivos del feedback)
 // ==========================================
 model Attachment {
-  id        String   @id @default(uuid())
-  filename  String
-  path      String
-  mimetype  String
-  size      Int
+  id       String @id @default(uuid())
+  filename String
+  path     String
+  mimetype String
+  size     Int
 
   commentId String
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -161,12 +220,12 @@ model Attachment {
 // TICKETS (seguimiento de comentarios)
 // ==========================================
 model Ticket {
-  id       String       @id @default(uuid())
+  id       String         @id @default(uuid())
   title    String
-  priority Priority     @default(MEDIUM)
+  priority Priority       @default(MEDIUM)
   category TicketCategory @default(OTHER)
-  status   TicketStatus @default(OPEN)
-  notes    String?      @db.Text
+  status   TicketStatus   @default(OPEN)
+  notes    String?        @db.Text
 
   // Asignado a un usuario del equipo
   assigneeId String?
@@ -177,8 +236,8 @@ model Ticket {
   comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   // Mensajes internos del equipo
-  messages  TicketMessage[]
-  tags      TicketTag[]
+  messages TicketMessage[]
+  tags     TicketTag[]
 
   resolvedAt DateTime?
   createdAt  DateTime  @default(now())
@@ -194,8 +253,12 @@ model Ticket {
 // ENUMS
 // ==========================================
 enum UserRole {
-  ADMIN
+  SUPER_ADMIN
+  ORG_OWNER
+  ORG_ADMIN
   MEMBER
+  CLIENT_VIEWER
+  ADMIN
   VIEWER
   DEMO
 }
@@ -233,15 +296,15 @@ enum TicketCategory {
 // MENSAJES INTERNOS DE TICKETS
 // ==========================================
 model TicketMessage {
-  id        String   @id @default(uuid())
-  content   String   @db.Text
-  guestName String?           // Nombre del visitante (respuesta del cliente)
-  
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  content   String  @db.Text
+  guestName String? // Nombre del visitante (respuesta del cliente)
 
-  authorId  String?
-  author    User?    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -257,8 +320,8 @@ model UserProjectPermission {
   id        String   @id @default(uuid())
   userId    String
   projectId String
-  canView   Boolean  @default(true)   // Puede ver tickets/comentarios del proyecto
-  canEdit   Boolean  @default(false)  // Puede modificar tickets
+  canView   Boolean  @default(true)  // Puede ver tickets/comentarios del proyecto
+  canEdit   Boolean  @default(false) // Puede modificar tickets
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -293,7 +356,7 @@ model DemoRequest {
 
   // Si se aprueba, asociamos el usuario temporal
   demoUserId String?
-  demoUser   User?     @relation(fields: [demoUserId], references: [id], onDelete: SetNull)
+  demoUser   User?   @relation(fields: [demoUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -312,15 +375,15 @@ enum DemoStatus {
 // HISTORIAL DE ACTIVIDAD
 // ==========================================
 model ActivityLog {
-  id        String   @id @default(uuid())
-  action    String   // LOGIN, LOGOUT, TICKET_CREATED, TICKET_STATUS_CHANGED, etc.
-  entity    String?  // ticket, project, comment, user
+  id        String  @id @default(uuid())
+  action    String  // LOGIN, LOGOUT, TICKET_CREATED, TICKET_STATUS_CHANGED, etc.
+  entity    String? // ticket, project, comment, user
   entityId  String?
-  details   String?  @db.Text // JSON con detalles adicionales
+  details   String? @db.Text // JSON con detalles adicionales
   ipAddress String?
 
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
@@ -334,9 +397,9 @@ model ActivityLog {
 // TAGS / ETIQUETAS
 // ==========================================
 model Tag {
-  id    String @id @default(uuid())
-  name  String @unique
-  color String @default("#6366f1")
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#6366f1")
 
   tickets TicketTag[]
 
