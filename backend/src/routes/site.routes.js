@@ -84,12 +84,15 @@ router.get('/:id/snippet', async (req, res, next) => {
       return res.status(403).json({ error: 'No tienes acceso a este sitio.' });
     }
 
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null);
-    const frontendUrl = origin || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = origin || process.env.FRONTEND_URL || `${protocol}://${host}`;
     const reviewUrl = `${frontendUrl}/review/${site.sdkToken}`;
 
-    // También devolvemos el snippet SDK por compatibilidad
-    const sdkUrl = `${process.env.SDK_BASE_URL}/sdk/imgc-feedback.min.js`;
+    // Devolvemos la URL del SDK dinámica
+    const sdkBaseUrl = process.env.SDK_BASE_URL || `${protocol}://${host}`;
+    const sdkUrl = `${sdkBaseUrl}/sdk/imgc-feedback.min.js`;
     const snippet = `<!-- IMGC Feedback SDK -->
 <script>window.IMGC_FEEDBACK_TOKEN = '${site.sdkToken}';</script>
 <script src="${sdkUrl}" async></script>`;

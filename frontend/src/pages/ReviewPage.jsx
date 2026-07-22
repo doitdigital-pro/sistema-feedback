@@ -5,8 +5,8 @@ import { io } from 'socket.io-client';
 import { MessageSquare, Send, X, User, MousePointer, AlertTriangle, Paperclip, Clock, CheckCircle, Monitor, Smartphone, Pencil } from 'lucide-react';
 import AnnotationCanvas from '../components/AnnotationCanvas';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
 // Función auxiliar para determinar si un comentario corresponde a PC o Celular
 const getCommentDevice = (comment, breakpoint) => {
@@ -474,21 +474,6 @@ export default function ReviewPage() {
     }
   };
 
-  // Calculate comment form position (only for overlay/fallback mode)
-  const getFormPosition = () => {
-    if (!pendingClick || !overlayRef.current) return {};
-    const rect = overlayRef.current.getBoundingClientRect();
-    let left = pendingClick.clickX + 20;
-    let top = pendingClick.clickY + 20;
-
-    if (left + 320 > rect.width) left = pendingClick.clickX - 340;
-    if (top + 220 > rect.height) top = pendingClick.clickY - 240;
-    if (left < 10) left = 10;
-    if (top < 10) top = 10;
-
-    return { left: `${left}px`, top: `${top}px` };
-  };
-
   // Filter comments for current page & active tab & active device (unified)
   const currentPageComments = comments.filter(c => {
     const matchPage = isSamePage(c.pageUrl, currentUrl);
@@ -700,643 +685,316 @@ export default function ReviewPage() {
             className="review-iframe"
           />
 
-          {/* ===== OVERLAY MODE (fallback when SDK is NOT installed) ===== */}
+          {/* Overlay layer for feedback pins & clicks (ONLY active when SDK is NOT present) */}
           {!sdkReady && (
-            <>
-              {/* Overlay to capture clicks when in feedback mode */}
-              {feedbackMode && (
+            <div
+              ref={overlayRef}
+              className={`review-overlay ${feedbackMode ? 'active' : ''}`}
+              onClick={handleOverlayClick}
+            >
+              {/* Existing pins for current page & device */}
+              {currentPageComments.map((comment) => (
                 <div
-                  ref={overlayRef}
-                  onClick={handleOverlayClick}
+                  key={comment.id}
+                  className={`review-pin ${activeComment === comment.id ? 'active' : ''}`}
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    cursor: pendingClick ? 'default' : 'crosshair',
-                    zIndex: 10,
-                    background: pendingClick ? 'transparent' : 'rgba(79, 70, 229, 0.03)',
+                    left: `${comment.xPercent}%`,
+                    top: `${comment.yPercent}%`,
+                    borderColor: siteInfo.project.color,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveComment(comment.id === activeComment ? null : comment.id);
+                    setSidebarOpen(true);
+                  }}
+                  title={`${comment.guestName}: ${comment.content}`}
+                >
+                  <span className="review-pin-number">{comment.sequenceNumber}</span>
+                </div>
+              ))}
+
+              {/* Pending click pin */}
+              {pendingClick && (
+                <div
+                  className="review-pin pending"
+                  style={{
+                    left: `${pendingClick.xPercent}%`,
+                    top: `${pendingClick.yPercent}%`,
+                    background: siteInfo.project.color,
                   }}
                 >
-                  {/* Existing comment pins on overlay */}
-                  {currentPageComments.map((comment, index) => (
-                    <div
-                      key={comment.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveComment(comment.id);
-                        setSidebarOpen(true);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        left: `${comment.xPercent}%`,
-                        top: `${comment.yPercent}%`,
-                        width: '28px',
-                        height: '28px',
-                        background: activeComment === comment.id ? '#4f46e5' : '#6366f1',
-                        color: 'white',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontFamily: 'sans-serif',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        transform: 'translate(-50%, -50%)',
-                        cursor: 'pointer',
-                        boxShadow: activeComment === comment.id 
-                          ? '0 0 0 3px rgba(79, 70, 229, 0.4), 0 2px 8px rgba(0,0,0,0.3)' 
-                          : '0 2px 6px rgba(0,0,0,0.3)',
-                        border: '2px solid white',
-                        zIndex: 20,
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.15)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%)'}
-                    >
-                      {comment.sequenceNumber || (index + 1)}
-                    </div>
-                  ))}
-
-                  {/* Temporary pin at click position */}
-                  {pendingClick && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${pendingClick.xPercent}%`,
-                        top: `${pendingClick.yPercent}%`,
-                        width: '28px',
-                        height: '28px',
-                        background: '#ef4444',
-                        color: 'white',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontFamily: 'sans-serif',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        transform: 'translate(-50%, -50%)',
-                        boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.7)',
-                        border: '2px solid white',
-                        zIndex: 25,
-                        animation: 'imgc-pin-pulse 1.5s infinite',
-                      }}
-                    >
-                      +
-                    </div>
-                  )}
-
-                  {/* Comment form at click position (overlay mode) */}
-                  {pendingClick && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        ...getFormPosition(),
-                        zIndex: 30,
-                        background: 'white',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05)',
-                        width: '320px',
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <form onSubmit={handleSubmitComment}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#1e293b' }}>
-                          Nuevo Comentario
-                        </h4>
-                        <textarea
-                          placeholder="Escribe tu comentario..."
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          autoFocus
-                          rows={3}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            resize: 'none',
-                            fontFamily: 'inherit',
-                            fontSize: '14px',
-                            boxSizing: 'border-box',
-                            outline: 'none',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                          onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                        />
-                        {/* Selector de archivos adjuntos */}
-                        <div style={{ marginTop: '10px' }}>
-                          <label style={{ 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
-                            fontSize: '12px', 
-                            color: '#4f46e5', 
-                            cursor: 'pointer',
-                            fontWeight: '600'
-                          }}>
-                            <Paperclip size={14} /> Adjuntar archivos o imágenes
-                            <input 
-                              type="file" 
-                              multiple 
-                              style={{ display: 'none' }} 
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  setSelectedFiles(prev => [...prev, ...Array.from(e.target.files)]);
-                                }
-                              }}
-                            />
-                          </label>
-                          
-                          {/* Listado de archivos seleccionados */}
-                          {selectedFiles.length > 0 && (
-                            <div style={{ 
-                              marginTop: '8px', 
-                              display: 'flex', 
-                              flexDirection: 'column', 
-                              gap: '4px',
-                              maxHeight: '80px',
-                              overflowY: 'auto'
-                            }}>
-                              {selectedFiles.map((file, idx) => (
-                                <div key={idx} style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center', 
-                                  background: '#f8fafc', 
-                                  padding: '4px 8px', 
-                                  borderRadius: '4px',
-                                  fontSize: '11px',
-                                  border: '1px solid #e2e8f0'
-                                }}>
-                                  <span style={{ 
-                                    textOverflow: 'ellipsis', 
-                                    overflow: 'hidden', 
-                                    whiteSpace: 'nowrap',
-                                    maxWidth: '200px',
-                                    color: '#334155'
-                                  }}>
-                                    {file.name}
-                                  </span>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                                    style={{ 
-                                      background: 'none', 
-                                      border: 'none', 
-                                      color: '#ef4444', 
-                                      cursor: 'pointer',
-                                      fontSize: '12px',
-                                      padding: '0 4px'
-                                    }}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
-                          <button 
-                            type="button" 
-                            className="review-btn review-btn-ghost" 
-                            onClick={cancelFeedback}
-                            style={{ fontSize: '13px', padding: '6px 14px' }}
-                          >
-                            Cancelar
-                          </button>
-                          <button 
-                            type="submit" 
-                            className="review-btn review-btn-primary" 
-                            disabled={submitting || !commentText.trim()}
-                            style={{ fontSize: '13px', padding: '6px 14px' }}
-                          >
-                            {submitting ? 'Enviando...' : 'Enviar'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
+                  ?
                 </div>
               )}
-
-              {/* Show pins even when NOT in feedback mode (overlay fallback) */}
-              {!feedbackMode && currentPageComments.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: 'none',
-                  zIndex: 5,
-                }}>
-                  {currentPageComments.map((comment, index) => (
-                    <div
-                      key={comment.id}
-                      onClick={() => {
-                        setActiveComment(comment.id);
-                        setSidebarOpen(true);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        left: `${comment.xPercent}%`,
-                        top: `${comment.yPercent}%`,
-                        width: '28px',
-                        height: '28px',
-                        background: activeComment === comment.id ? '#4f46e5' : '#6366f1',
-                        color: 'white',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontFamily: 'sans-serif',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        transform: 'translate(-50%, -50%)',
-                        cursor: 'pointer',
-                        pointerEvents: 'auto',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                        border: '2px solid white',
-                        zIndex: 20,
-                        transition: 'transform 0.2s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.15)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%)'}
-                    >
-                      {comment.sequenceNumber || (index + 1)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            </div>
           )}
-          {/* ===== END OVERLAY MODE ===== */}
-
-          {/* ===== SDK MODE: When SDK is active, the iframe handles its own pins. ===== */}
-          {/* No overlay pins needed — the SDK renders them inside the iframe DOM */}
-          {/* The overlay for capturing clicks is also handled by the SDK inside the iframe */}
-
         </div>
 
         {/* Sidebar */}
-        <div className={`review-sidebar ${sidebarOpen ? 'open' : ''} ${activeDevice === 'mobile' && sidebarOpen ? 'mobile-open' : ''}`}>
-          <div className="review-sidebar-header">
-            <h3>Comentarios ({comments.length})</h3>
-            <button className="review-btn-icon" onClick={() => setSidebarOpen(false)}>
-              <X size={18} />
-            </button>
-          </div>
+        <div className={`review-sidebar ${sidebarOpen ? 'open' : ''}`}>
+          {/* Form when user clicks to add a comment */}
+          {pendingClick ? (
+            <div className="review-comment-form">
+              <div className="review-comment-form-header">
+                <h3>Nuevo Comentario</h3>
+                <button className="review-btn-icon" onClick={cancelFeedback}>
+                  <X size={16} />
+                </button>
+              </div>
 
-          {/* Pestañas para filtrar por Pendientes y Resueltos */}
-          <div className="review-sidebar-tabs">
-            <button 
-              className={`review-sidebar-tab ${activeTab === 'pending' ? 'active' : ''}`}
-              onClick={() => setActiveTab('pending')}
-            >
-              <Clock size={12} style={{ marginRight: '6px' }} />
-              Pendientes ({pendingCommentsCount})
-            </button>
-            <button 
-              className={`review-sidebar-tab ${activeTab === 'resolved' ? 'active' : ''}`}
-              onClick={() => setActiveTab('resolved')}
-            >
-              <CheckCircle size={12} style={{ marginRight: '6px' }} />
-              Resueltos ({resolvedCommentsCount})
-            </button>
-          </div>
+              {pendingClick.screenshotBase64 && (
+                <div style={{ marginBottom: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', maxHeight: '140px' }}>
+                  <img src={pendingClick.screenshotBase64} alt="Captura del elemento" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
+                </div>
+              )}
 
-          {/* Comment form when click comes from SDK (shown in sidebar) */}
-          {sdkReady && pendingClick && pendingClick.fromSDK && (
-            <div style={{
-              padding: '16px',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc',
-            }}>
               <form onSubmit={handleSubmitComment}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#1e293b' }}>
-                  Nuevo Comentario
-                </h4>
                 <textarea
-                  placeholder="Escribe tu comentario..."
+                  placeholder="Escribe tu comentario u observación sobre este elemento..."
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
+                  rows="4"
                   autoFocus
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    resize: 'none',
-                    fontFamily: 'inherit',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                  required
                 />
-                {/* Selector de archivos adjuntos */}
-                <div style={{ marginTop: '10px' }}>
-                  <label style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    fontSize: '12px', 
-                    color: '#4f46e5', 
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}>
-                    <Paperclip size={14} /> Adjuntar archivos o imágenes
-                    <input 
-                      type="file" 
-                      multiple 
-                      style={{ display: 'none' }} 
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          setSelectedFiles(prev => [...prev, ...Array.from(e.target.files)]);
-                        }
-                      }}
-                    />
+                
+                {/* Botones de Anotaciones / Dibujo */}
+                <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                  <button
+                    type="button"
+                    className="review-btn review-btn-ghost"
+                    onClick={() => setShowAnnotation(!showAnnotation)}
+                    style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center', background: showAnnotation ? '#e0e7ff' : '#f1f5f9', color: showAnnotation ? '#4338ca' : '#475569' }}
+                  >
+                    <Pencil size={14} />
+                    {showAnnotation ? 'Cerrar Herramienta de Dibujo' : '🎨 Realizar Anotación / Dibujo en la Captura'}
+                  </button>
+                </div>
+
+                {/* Canvas de Dibujo / Anotación si está activo */}
+                {showAnnotation && pendingClick.screenshotBase64 && (
+                  <AnnotationCanvas
+                    imageSrc={pendingClick.screenshotBase64}
+                    onSave={(annotatedBase64) => {
+                      setPendingClick(prev => ({ ...prev, screenshotBase64: annotatedBase64 }));
+                      setShowAnnotation(false);
+                    }}
+                    onCancel={() => setShowAnnotation(false)}
+                  />
+                )}
+
+                {/* Subida de Archivos Adjuntos */}
+                <div style={{ marginTop: '8px', marginBottom: '12px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                    Archivos adjuntos (opcional):
                   </label>
-                  
-                  {/* Listado de archivos seleccionados */}
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => setSelectedFiles(Array.from(e.target.files))}
+                    style={{ fontSize: '12px', width: '100%' }}
+                  />
                   {selectedFiles.length > 0 && (
-                    <div style={{ 
-                      marginTop: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '4px',
-                      maxHeight: '80px',
-                      overflowY: 'auto'
-                    }}>
-                      {selectedFiles.map((file, idx) => (
-                        <div key={idx} style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
-                          background: '#f8fafc', 
-                          padding: '4px 8px', 
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          border: '1px solid #e2e8f0'
-                        }}>
-                          <span style={{ 
-                            textOverflow: 'ellipsis', 
-                            overflow: 'hidden', 
-                            whiteSpace: 'nowrap',
-                            maxWidth: '200px',
-                            color: '#334155'
-                          }}>
-                            {file.name}
-                          </span>
-                          <button 
-                            type="button" 
-                            onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                            style={{ 
-                              background: 'none', 
-                              border: 'none', 
-                              color: '#ef4444', 
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              padding: '0 4px'
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                    <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}>
+                      {selectedFiles.length} archivo(s) seleccionado(s)
                     </div>
                   )}
                 </div>
 
-                {/* Screenshot preview with Annotate button */}
-                {pendingClick.screenshotBase64 && (
-                  <div className="annotation-screenshot-preview" style={{ marginTop: '10px' }}>
-                    <img src={pendingClick.screenshotBase64} alt="Captura de pantalla" />
-                    <button
-                      type="button"
-                      className="annotation-edit-btn"
-                      onClick={() => setShowAnnotation(true)}
-                    >
-                      <Pencil size={14} /> Anotar
-                    </button>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
-                  <button 
-                    type="button" 
-                    className="review-btn review-btn-ghost" 
+                <div className="review-comment-form-actions">
+                  <button
+                    type="button"
+                    className="review-btn review-btn-ghost"
                     onClick={cancelFeedback}
-                    style={{ fontSize: '13px', padding: '6px 14px' }}
                   >
                     Cancelar
                   </button>
-                  <button 
-                    type="submit" 
-                    className="review-btn review-btn-primary" 
-                    disabled={submitting || !commentText.trim()}
-                    style={{ fontSize: '13px', padding: '6px 14px' }}
+                  <button
+                    type="submit"
+                    className="review-btn review-btn-primary"
+                    disabled={submitting}
                   >
-                    {submitting ? 'Enviando...' : 'Enviar'}
+                    {submitting ? 'Enviando...' : 'Guardar Comentario'}
                   </button>
                 </div>
               </form>
             </div>
-          )}
-
-          <div className="review-sidebar-list">
-            {filteredComments.length === 0 ? (
-              <div className="review-sidebar-empty">
-                <MessageSquare size={32} />
-                <p>No hay comentarios {activeTab === 'pending' ? 'pendientes' : 'resueltos'} aún.</p>
-                {activeTab === 'pending' && <p>Haz clic en "Dejar Comentario" para empezar.</p>}
+          ) : (
+            /* Comments list */
+            <>
+              <div className="review-sidebar-header">
+                <h3>Comentarios ({comments.length})</h3>
+                <button className="review-btn-icon" onClick={() => setSidebarOpen(false)}>
+                  <X size={16} />
+                </button>
               </div>
-            ) : (
-              filteredComments.map((comment, index) => (
-                <div
-                  key={comment.id}
-                  className={`review-comment-card ${activeComment === comment.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveComment(activeComment === comment.id ? null : comment.id);
-                    // If comment is on another page, navigate the iframe to it
-                    if (comment.pageUrl && !isSamePage(comment.pageUrl, currentUrl) && iframeRef.current) {
-                      iframeRef.current.src = comment.pageUrl;
-                      setCurrentUrl(comment.pageUrl);
-                      // SDK will re-initialize on that page and send SDK_LOADED
-                    }
+
+              {/* Pestañas Pendientes / Resueltos */}
+              <div className="review-tabs" style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <button
+                  className={`review-tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('pending')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    border: 'none',
+                    background: activeTab === 'pending' ? '#ffffff' : 'transparent',
+                    color: activeTab === 'pending' ? '#4f46e5' : '#64748b',
+                    borderBottom: activeTab === 'pending' ? '2px solid #4f46e5' : 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
                   }}
                 >
-                  <div className="review-comment-header">
-                    <div className="review-comment-pin-num">{comment.sequenceNumber || (index + 1)}</div>
-                    <div className="review-comment-meta">
-                      <strong>{comment.guestName || comment.author?.name || 'Anónimo'}</strong>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                        <small>{new Date(comment.createdAt).toLocaleDateString()}</small>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#94a3b8' }} title={`Creado en vista ${getCommentDevice(comment, mobileBreakpoint) === 'desktop' ? 'PC' : 'Celular'}`}>
-                          • {getCommentDevice(comment, mobileBreakpoint) === 'desktop' ? <Monitor size={10} /> : <Smartphone size={10} />}
+                  <Clock size={14} />
+                  Pendientes ({pendingCommentsCount})
+                </button>
+                <button
+                  className={`review-tab-btn ${activeTab === 'resolved' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('resolved')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    border: 'none',
+                    background: activeTab === 'resolved' ? '#ffffff' : 'transparent',
+                    color: activeTab === 'resolved' ? '#10b981' : '#64748b',
+                    borderBottom: activeTab === 'resolved' ? '2px solid #10b981' : 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle size={14} />
+                  Resueltos ({resolvedCommentsCount})
+                </button>
+              </div>
+
+              <div className="review-comments-list">
+                {filteredComments.length === 0 ? (
+                  <div className="review-empty-comments">
+                    <MessageSquare size={32} />
+                    <p>No hay comentarios {activeTab === 'pending' ? 'pendientes' : 'resueltos'} en vista {activeDevice === 'mobile' ? 'Celular' : 'PC'}.</p>
+                  </div>
+                ) : (
+                  filteredComments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className={`review-comment-card ${activeComment === comment.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setActiveComment(comment.id === activeComment ? null : comment.id);
+                        // If SDK is present, tell it to highlight and scroll to this pin
+                        if (sdkReady && iframeRef.current) {
+                          iframeRef.current.contentWindow?.postMessage({
+                            type: 'FOCUS_PIN',
+                            commentId: comment.id
+                          }, '*');
+                        }
+                      }}
+                    >
+                      <div className="review-comment-header">
+                        <span className="review-comment-author">
+                          <User size={12} /> {comment.guestName}
+                        </span>
+                        <span className="review-comment-date">
+                          {new Date(comment.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                    </div>
-                    {comment.ticket && (
-                      <span className={`review-status review-status-${comment.ticket.status.toLowerCase()}`}>
-                        {comment.ticket.status === 'OPEN' ? 'Abierto' :
-                         comment.ticket.status === 'IN_PROGRESS' ? 'En Progreso' :
-                         comment.ticket.status === 'RESOLVED' ? 'Resuelto' : 'Cerrado'}
-                      </span>
-                    )}
-                  </div>
-                  {/* Show the page path for context */}
-                  {comment.pageUrl && (
-                    <small style={{ color: '#94a3b8', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
-                      {(() => { try { return new URL(comment.pageUrl).pathname; } catch { return comment.pageUrl; } })()}
-                    </small>
-                  )}
-                  <p className="review-comment-text">{comment.content}</p>
 
-                  {/* Archivos adjuntos del comentario */}
-                  {comment.attachments && comment.attachments.length > 0 && (
-                    <div 
-                      style={{ 
-                        marginTop: '8px', 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        gap: '8px',
-                        marginBottom: '8px'
-                      }}
-                      onClick={(e) => e.stopPropagation()} // Evitar colapsar la tarjeta al hacer clic en adjuntos
-                    >
-                      {comment.attachments.map(att => {
-                        const isImage = att.mimetype.startsWith('image/');
-                        const attUrl = att.path.startsWith('http') ? att.path : `${BACKEND_URL}/uploads/attachments/${att.path}`;
-                        
-                        return (
-                          <div key={att.id} style={{ fontSize: '11px' }}>
-                            {isImage ? (
-                              <a href={attUrl} target="_blank" rel="noreferrer">
-                                <img 
-                                  src={attUrl} 
-                                  alt={att.filename} 
-                                  style={{ 
-                                    width: '56px', 
-                                    height: '56px', 
-                                    objectFit: 'cover', 
-                                    borderRadius: '6px',
-                                    border: '1px solid #e2e8f0',
-                                    display: 'block'
-                                  }} 
-                                  title={att.filename}
-                                />
-                              </a>
-                            ) : (
-                              <a 
-                                href={attUrl} 
-                                download={att.filename}
-                                target="_blank" 
-                                rel="noreferrer"
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '4px 8px',
-                                  background: '#f1f5f9',
-                                  borderRadius: '6px',
-                                  color: '#475569',
-                                  textDecoration: 'none',
-                                  border: '1px solid #e2e8f0',
-                                  fontWeight: '600'
-                                }}
-                              >
-                                <Paperclip size={10} />
-                                <span style={{ 
-                                  maxWidth: '100px', 
-                                  overflow: 'hidden', 
-                                  textOverflow: 'ellipsis', 
-                                  whiteSpace: 'nowrap' 
-                                }}>
-                                  {att.filename}
-                                </span>
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                      {/* URL de la página donde se hizo el comentario */}
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comment.pageUrl}>
+                        📍 {comment.pageUrl ? new URL(comment.pageUrl).pathname : '/'}
+                      </div>
 
-                  {/* Replies thread */}
-                  {activeComment === comment.id && comment.ticket?.messages && (
-                    <div className="review-thread">
-                      {comment.ticket.messages.length > 0 && (
-                        <div className="review-thread-messages">
-                          {comment.ticket.messages.map(msg => (
-                            <div key={msg.id} className={`review-thread-msg ${msg.authorId ? 'team' : 'client'}`}>
-                              <div className="review-thread-msg-header">
-                                <strong>{msg.author?.name || msg.guestName || 'Cliente'}</strong>
-                                {msg.authorId && <span className="review-team-badge">Equipo</span>}
-                                <small>{new Date(msg.createdAt).toLocaleString()}</small>
+                      <p className="review-comment-text">{comment.content}</p>
+
+                      {/* Captura de pantalla si existe */}
+                      {comment.screenshotUrl && (
+                        <div style={{ marginTop: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                          <img 
+                            src={comment.screenshotUrl.startsWith('http') || comment.screenshotUrl.startsWith('data:') ? comment.screenshotUrl : `${BACKEND_URL}${comment.screenshotUrl}`} 
+                            alt="Captura del comentario" 
+                            style={{ width: '100%', height: 'auto', display: 'block' }} 
+                          />
+                        </div>
+                      )}
+
+                      {/* Archivos adjuntos */}
+                      {comment.attachments && comment.attachments.length > 0 && (
+                        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {comment.attachments.map(att => (
+                            <a
+                              key={att.id}
+                              href={att.path.startsWith('http') ? att.path : `${BACKEND_URL}/uploads/attachments/${att.path}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ fontSize: '11px', color: '#4f46e5', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Paperclip size={12} /> {att.filename}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Respuestas (Chat / Historial de notas) */}
+                      {comment.ticket?.messages && comment.ticket.messages.length > 0 && (
+                        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {comment.ticket.messages.map(m => (
+                            <div key={m.id} style={{ background: m.author ? '#eff6ff' : '#f8fafc', padding: '6px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                              <div style={{ fontWeight: '600', color: m.author ? '#1d4ed8' : '#334155', fontSize: '11px', marginBottom: '2px' }}>
+                                {m.author ? `🛠️ ${m.author.name}` : `👤 ${m.guestName || 'Cliente'}`}
                               </div>
-                              <p>{msg.content}</p>
+                              <div style={{ color: '#1e293b' }}>{m.content}</div>
                             </div>
                           ))}
                         </div>
                       )}
-                      <div className="review-reply-box">
-                        <input
-                          type="text"
-                          placeholder="Responder..."
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendReply(comment.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <button
-                          className="review-btn-icon primary"
-                          onClick={(e) => { e.stopPropagation(); handleSendReply(comment.id); }}
-                          disabled={sendingReply || !replyText.trim()}
-                        >
-                          <Send size={16} />
-                        </button>
+
+                      {/* Formulario para responder al comentario */}
+                      {activeComment === comment.id && (
+                        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <input
+                              type="text"
+                              placeholder="Escribir una respuesta..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSendReply(comment.id)}
+                              style={{ flex: 1, padding: '6px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                            />
+                            <button
+                              onClick={() => handleSendReply(comment.id)}
+                              disabled={sendingReply}
+                              className="review-btn review-btn-primary"
+                              style={{ padding: '6px 10px', fontSize: '12px' }}
+                            >
+                              <Send size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="review-comment-footer">
+                        <span className={`review-status-badge ${comment.ticket?.status?.toLowerCase() || 'open'}`}>
+                          {comment.ticket?.status === 'RESOLVED' ? 'Resuelto' : comment.ticket?.status === 'CLOSED' ? 'Cerrado' : 'Pendiente'}
+                        </span>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {/* CSS animation for the pulsing pin */}
-      <style>{`
-        @keyframes imgc-pin-pulse {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-      `}</style>
-
-      {/* Annotation Canvas Modal */}
-      {showAnnotation && pendingClick?.screenshotBase64 && (
-        <AnnotationCanvas
-          imageBase64={pendingClick.screenshotBase64}
-          onSave={(annotatedBase64) => {
-            setPendingClick(prev => ({
-              ...prev,
-              screenshotBase64: annotatedBase64
-            }));
-            setShowAnnotation(false);
-          }}
-          onCancel={() => setShowAnnotation(false)}
-        />
-      )}
     </div>
   );
 }

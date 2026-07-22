@@ -416,7 +416,7 @@ export default function ProjectDetail() {
       // ==========================================
       // PAGINAS SIGUIENTES: HOJA DE DETALLE POR COMENTARIO
       // ==========================================
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
       for (const site of reportData.sites) {
         for (const c of site.comments) {
@@ -800,21 +800,21 @@ export default function ProjectDetail() {
             </div>
 
             <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-              <strong>2. Código SDK (Invisible):</strong> Pega esto en el <code>&lt;head&gt;</code> del sitio web del cliente. Es completamente invisible para visitantes normales.
+              <strong>2. Snippet SDK (Opcional):</strong> Cópialo en el HTML de tu sitio.
             </p>
             <pre style={{ 
-              background: '#1e293b', color: '#f8fafc', padding: '16px', borderRadius: '8px', 
-              overflowX: 'auto', fontSize: '13px', lineHeight: '1.5', margin: 0
+              background: '#0f172a', color: '#f8fafc', padding: '12px', borderRadius: '8px', 
+              fontSize: '12px', overflowX: 'auto', marginBottom: '20px'
             }}>
               {reviewModal.snippet}
             </pre>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
-              <button className="btn btn-cancel" onClick={() => setReviewModal({ show: false, url: '', snippet: '' })}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setReviewModal({ show: false, url: '', snippet: '' })} className="btn btn-cancel">
                 Cerrar
               </button>
-              <button className="btn btn-primary" onClick={copyToClipboard}>
-                Copiar URL Cliente
+              <button onClick={copyToClipboard} className="btn btn-primary">
+                Copiar Enlace
               </button>
             </div>
           </div>
@@ -828,58 +828,50 @@ export default function ProjectDetail() {
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999
         }}>
-          <form onSubmit={handleSendShareEmail} className="card" style={{ padding: '24px', width: '100%', maxWidth: '600px', margin: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Mail size={20} style={{ color: '#1e3a8a' }} /> Enviar Enlace por Correo
-            </h3>
-            
-            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: '1.4' }}>
-              Envía los accesos para la revisión de <strong>{shareEmailModal.siteName}</strong> directamente al cliente.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Correo Destinatario</label>
-              <input
-                type="email"
-                required
-                value={shareEmailModal.email}
-                onChange={e => setShareEmailModal({ ...shareEmailModal, email: e.target.value })}
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-                placeholder="cliente@empresa.com"
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Asunto</label>
-              <input
-                type="text"
-                required
-                value={shareEmailModal.subject}
-                onChange={e => setShareEmailModal({ ...shareEmailModal, subject: e.target.value })}
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Mensaje</label>
-              <textarea
-                rows="6"
-                required
-                value={shareEmailModal.body}
-                onChange={e => setShareEmailModal({ ...shareEmailModal, body: e.target.value })}
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button type="button" className="btn btn-cancel" onClick={() => setShareEmailModal({ ...shareEmailModal, show: false })} disabled={shareEmailModal.sending}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn btn-primary" style={{ background: '#1e3a8a' }} disabled={shareEmailModal.sending}>
-                {shareEmailModal.sending ? 'Enviando...' : 'Enviar Correo'}
-              </button>
-            </div>
-          </form>
+          <div className="card" style={{ padding: '24px', width: '100%', maxWidth: '600px', margin: '20px' }}>
+            <h3 style={{ marginBottom: '16px' }}>Compartir por Correo Electrónico</h3>
+            <form onSubmit={handleSendShareEmail} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>Correo del Destinatario *</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={shareEmailModal.email} 
+                  onChange={e => setShareEmailModal({...shareEmailModal, email: e.target.value})} 
+                  placeholder="ejemplo@cliente.com"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>Asunto *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={shareEmailModal.subject} 
+                  onChange={e => setShareEmailModal({...shareEmailModal, subject: e.target.value})} 
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>Mensaje *</label>
+                <textarea 
+                  rows="6" 
+                  required 
+                  value={shareEmailModal.body} 
+                  onChange={e => setShareEmailModal({...shareEmailModal, body: e.target.value})} 
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button type="button" onClick={() => setShareEmailModal({ ...shareEmailModal, show: false })} className="btn btn-cancel">
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={shareEmailModal.sending}>
+                  {shareEmailModal.sending ? 'Enviando...' : 'Enviar Correo'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -890,50 +882,42 @@ export default function ProjectDetail() {
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999
         }}>
-          <form onSubmit={handleSendShareWhatsapp} className="card" style={{ padding: '24px', width: '100%', maxWidth: '600px', margin: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Phone size={20} style={{ color: '#075e54' }} /> Enviar por WhatsApp
-            </h3>
-            
-            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: '1.4' }}>
-              Genera un mensaje de WhatsApp para compartir los accesos de <strong>{shareWhatsappModal.siteName}</strong>.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Teléfono del Cliente (Opcional)</label>
-              <input
-                type="text"
-                value={shareWhatsappModal.phone}
-                onChange={e => setShareWhatsappModal({ ...shareWhatsappModal, phone: e.target.value })}
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-                placeholder="Ej: +5215512345678"
-              />
-              <span style={{ fontSize: '11px', color: '#64748b' }}>Incluye el código de país. Si lo dejas vacío, podrás compartirlo con cualquier chat.</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Mensaje a enviar</label>
-              <textarea
-                rows="6"
-                required
-                value={shareWhatsappModal.message}
-                onChange={e => setShareWhatsappModal({ ...shareWhatsappModal, message: e.target.value })}
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button type="button" className="btn btn-cancel" onClick={() => setShareWhatsappModal({ ...shareWhatsappModal, show: false })}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn btn-primary" style={{ background: '#075e54' }}>
-                Abrir WhatsApp Web
-              </button>
-            </div>
-          </form>
+          <div className="card" style={{ padding: '24px', width: '100%', maxWidth: '500px', margin: '20px' }}>
+            <h3 style={{ marginBottom: '16px' }}>Compartir por WhatsApp</h3>
+            <form onSubmit={handleSendShareWhatsapp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>Número de Teléfono (con código de país) *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={shareWhatsappModal.phone} 
+                  onChange={e => setShareWhatsappModal({...shareWhatsappModal, phone: e.target.value})} 
+                  placeholder="Ej: 573001234567"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>Mensaje *</label>
+                <textarea 
+                  rows="5" 
+                  required 
+                  value={shareWhatsappModal.message} 
+                  onChange={e => setShareWhatsappModal({...shareWhatsappModal, message: e.target.value})} 
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0', marginTop: '4px', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button type="button" onClick={() => setShareWhatsappModal({ ...shareWhatsappModal, show: false })} className="btn btn-cancel">
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ background: '#25d366' }}>
+                  Abrir en WhatsApp
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
-
     </div>
   );
 }
